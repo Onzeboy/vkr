@@ -210,6 +210,7 @@ public class ProductCRUDController {
         return "admin/editprod";
     }
 
+
     @PostMapping("/edit")
     @Transactional
     public String editProduct(
@@ -232,7 +233,10 @@ public class ProductCRUDController {
         log.info("Attempting to update product ID: {}", product.getId());
         log.info("Received {} photos", photos != null ? photos.length : 0);
         log.info("Category ID: {}, Subcategory ID: {}", categoryId, subcategoryId);
+        log.info("Delete images: {}", deleteImages != null ? deleteImages : "none");
+        log.info("Primary image: {}", primaryImage);
 
+        // Загружаем существующий продукт с изображениями
         Product existingProduct = productService.findProductById(product.getId());
         if (existingProduct == null) {
             log.warn("Product with ID {} not found", product.getId());
@@ -244,6 +248,7 @@ public class ProductCRUDController {
             return "admin/editprod";
         }
 
+        // Проверка категории
         Long selectedCategoryId = subcategoryId != null ? subcategoryId : categoryId;
         if (selectedCategoryId == null) {
             result.rejectValue("category", "category.required", "Выберите категорию или подкатегорию");
@@ -258,6 +263,7 @@ public class ProductCRUDController {
             }
         }
 
+        // Проверка ошибок валидации
         if (result.hasErrors()) {
             log.warn("Validation errors found for product ID: {}", product.getId());
             model.addAttribute("rootCategories", productService.getRootCategories());
@@ -267,14 +273,20 @@ public class ProductCRUDController {
             return "admin/editprod";
         }
 
+        // Сохраняем данные из существующего продукта
         product.setCreatedAt(existingProduct.getCreatedAt());
         if (product.getAverageRating() == null) {
             product.setAverageRating(existingProduct.getAverageRating());
         }
 
+        // Устанавливаем существующие изображения
+        product.setImages(existingProduct.getImages());
+
+        // Обработка тегов и питательной информации
         productService.setupTags(product, tags);
         productService.setupNutritionalInfo(product, calories, fats, proteins, carbohydrates, composition);
 
+        // Проверка полей категории
         if (selectedCategoryId != null) {
             Category category = productService.findCategoryById(selectedCategoryId);
             Map<String, Boolean> fields = category.getProductFields();
@@ -295,8 +307,10 @@ public class ProductCRUDController {
             }
         }
 
+        // Удаление изображений, если указано
         if (deleteImages != null && !deleteImages.isEmpty()) {
             try {
+                productService.deleteImageFiles(deleteImages);
                 productService.deleteImages(deleteImages);
                 product.getImages().removeIf(image -> deleteImages.contains(image.getId()));
                 log.info("Deleted {} images for product ID: {}", deleteImages.size(), product.getId());
@@ -311,6 +325,7 @@ public class ProductCRUDController {
             }
         }
 
+        // Сохранение продукта (без новых изображений)
         try {
             productService.saveProduct(product);
             log.info("Product updated with ID: {}", product.getId());
@@ -324,10 +339,11 @@ public class ProductCRUDController {
             return "admin/editprod";
         }
 
-        List<ProductImage> productImages = null;
+        // Обработка новых фотографий, если они есть
+        List<ProductImage> newImages = null;
         if (photos != null && photos.length > 0 && !(photos.length == 1 && photos[0].isEmpty())) {
             try {
-                productImages = productService.processAndSavePhotos(product, photos, result, primaryImage);
+                newImages = productService.processAndSavePhotos(product, photos, result, primaryImage);
                 if (result.hasErrors()) {
                     log.warn("Errors found during photo processing for product ID: {}", product.getId());
                     model.addAttribute("rootCategories", productService.getRootCategories());
@@ -336,18 +352,14 @@ public class ProductCRUDController {
                     model.addAttribute("selectedSubcategoryId", subcategoryId);
                     return "admin/editprod";
                 }
-            } catch (Exception e) {
-                log.error("Exception during photo processing for product ID {}: {}", product.getId(), e.getMessage());
-                result.reject("images.error", "Ошибка при обработке фотографий: " + e.getMessage());
-                model.addAttribute("rootCategories", productService.getRootCategories());
-                model.addAttribute("allCategories", productService.getAllCategories());
-                model.addAttribute("selectedCategoryId", categoryId);
-                model.addAttribute("selectedSubcategoryId", subcategoryId);
-                return "admin/editprod";
-            }
 
-            try {
-                product.getImages().addAll(productImages);
+                // Добавляем новые изображения к существующим
+                product.getImages().addAll(newImages);
+
+                // Обновляем позиции изображений
+                productService.updateImagePositions(product);
+
+                // Сохранение продукта с обновленными изображениями
                 productService.saveProduct(product);
                 log.info("Product with new images saved successfully: {}", product.getName());
             } catch (Exception e) {
@@ -359,6 +371,39 @@ public class ProductCRUDController {
                 model.addAttribute("selectedSubcategoryId", subcategoryId);
                 return "admin/editprod";
             }
+        }
+
+        // Установка основной фотографии
+        try {
+            Long primaryImageId = null;
+            if (primaryImage != null && !primaryImage.isEmpty()) {
+                if (primaryImage.startsWith("new_")) {
+                    // Основная фотография среди новых
+                    int newImageIndex = Integer.parseInt(primaryImage.replace("new_", ""));
+                    if (newImages != null && newImageIndex >= 0 && newImageIndex < newImages.size()) {
+                        primaryImageId = newImages.get(newImageIndex).getId();
+                    }
+                } else {
+                    // Основная фотография среди существующих
+                    primaryImageId = Long.parseLong(primaryImage);
+                }
+            }
+            if (primaryImageId != null) {
+                productService.setPrimaryImage(product, primaryImageId);
+            } else if (product.getImages().isEmpty()) {
+                log.warn("No images available for product ID: {}", product.getId());
+            } else {
+                // Если primaryImage не указан, устанавливаем первое изображение как основное
+                productService.setPrimaryImage(product, product.getImages().get(0).getId());
+            }
+        } catch (NumberFormatException e) {
+            log.error("Invalid primaryImage format: {}", primaryImage, e);
+            result.reject("images.primary.error", "Недопустимый формат основной фотографии");
+            model.addAttribute("rootCategories", productService.getRootCategories());
+            model.addAttribute("allCategories", productService.getAllCategories());
+            model.addAttribute("selectedCategoryId", categoryId);
+            model.addAttribute("selectedSubcategoryId", subcategoryId);
+            return "admin/editprod";
         }
 
         redirectAttributes.addFlashAttribute("successMessage", "Продукт успешно обновлен!");
@@ -402,5 +447,16 @@ public class ProductCRUDController {
             throw new IllegalArgumentException("Category not found: " + categoryId);
         }
         return category.getProductFields();
+    }
+    @PostMapping("/update")
+    public String updateProduct(@ModelAttribute Product product, Model model) {
+        if (product.getDiscountPercentage() != null) {
+            // Update only discount if provided
+            productService.updateDiscount(product.getId(), product.getDiscountPercentage());
+        } else if (product.getPrice() != null || product.getStatus() != null) {
+            // Update all fields if price or status is provided
+            productService.updateProduct(product);
+        }
+        return "redirect:/admin/products?successMessage=Продукт успешно обновлен";
     }
 }

@@ -65,8 +65,8 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<Address> addresses; // Множество адресов пользователя
 
-//    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-//    private List<Order> orders; // Множество заказов пользователя
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Order> orders;
 
 
     public boolean isEnabled() {

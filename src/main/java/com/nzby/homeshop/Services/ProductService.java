@@ -9,9 +9,11 @@ import com.nzby.homeshop.POJO.ProductImage;
 import com.nzby.homeshop.Repository.CategoryRepository;
 import com.nzby.homeshop.Repository.ProductImageRepository;
 import com.nzby.homeshop.Repository.ProductRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -21,11 +23,15 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class ProductService {
@@ -40,6 +46,9 @@ public class ProductService {
 
     @Autowired
     private ProductImageRepository productImageRepository;
+
+    @Value("${app.upload.dir}")
+    private String uploadDir;
 
     private static final String UPLOAD_DIR = "src/main/resources/static/Uploads";
 
@@ -100,6 +109,7 @@ public class ProductService {
         return result;
     }
 
+
     @Transactional
     public List<ProductImage> processAndSavePhotos(Product product, MultipartFile[] photos, BindingResult result, String primaryImage) {
         List<ProductImage> productImages = new ArrayList<>();
@@ -115,8 +125,13 @@ public class ProductService {
             return productImages;
         }
 
-        String productDir = Paths.get(UPLOAD_DIR, "products", String.valueOf(product.getId())).toString();
+        // Разрешенные расширения файлов
+        List<String> allowedExtensions = Arrays.asList(".jpg", ".jpeg", ".png");
+
+        // Используем app.upload.dir из конфигурации
+        String productDir = Paths.get(uploadDir, "products", String.valueOf(product.getId())).toString();
         Path dirPath = Paths.get(productDir);
+
         try {
             Files.createDirectories(dirPath);
             logger.info("Directory created successfully: {}", productDir);
@@ -133,6 +148,16 @@ public class ProductService {
                 String originalFilename = photo.getOriginalFilename();
                 logger.info("Processing photo {}: name={}, size={}, type={}", i, originalFilename, photo.getSize(), contentType);
 
+                // Проверка расширения файла
+                String fileExtension = originalFilename != null && originalFilename.contains(".")
+                        ? originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase()
+                        : "";
+                if (!allowedExtensions.contains(fileExtension)) {
+                    logger.warn("Invalid file extension for {}: {}", originalFilename, fileExtension);
+                    result.rejectValue("images", "images.extension", "Файл " + originalFilename + ": разрешены только файлы с расширениями .jpg, .jpeg, .png");
+                    continue;
+                }
+
                 if (contentType == null || !Arrays.asList("image/jpeg", "image/png").contains(contentType)) {
                     logger.warn("Invalid file format for {}: {}", originalFilename, contentType);
                     result.rejectValue("images", "images.format", "Файл " + originalFilename + ": разрешены только JPEG и PNG");
@@ -141,17 +166,19 @@ public class ProductService {
 
                 if (photo.getSize() > 5 * 1024 * 1024) {
                     logger.warn("File {} exceeds 5MB limit", originalFilename);
-                    result.rejectValue("images", "images.size", "Файл " + originalFilename + ": размер не должен превышать 5 МБ");
+                    result.rejectValue("images", "images.size", "File " + originalFilename + ": размер не должен превышать 5 МБ");
                     continue;
                 }
 
                 try {
-                    String fileName = System.currentTimeMillis() + "_" + originalFilename.replaceAll("[^a-zA-Z0-9.-]", "_");
+                    // Генерируем уникальное имя файла
+                    String fileName = UUID.randomUUID().toString() + fileExtension;
                     Path filePath = dirPath.resolve(fileName);
                     Files.write(filePath, photo.getBytes());
                     logger.info("Saved photo for product {}: {}", product.getId(), filePath);
 
-                    String relativeFilePath = Paths.get("uploads", "products", String.valueOf(product.getId()), fileName).toString();
+                    // Сохраняем относительный путь
+                    String relativeFilePath = "products/" + product.getId() + "/" + fileName;
 
                     ProductImage productImage = new ProductImage();
                     productImage.setProduct(product);
@@ -169,20 +196,44 @@ public class ProductService {
             }
         }
 
-        if (productImages.isEmpty()) {
-            result.rejectValue("images", "images.empty", "Не удалось обработать ни одно изображение");
-        } else if (primaryImage == null || primaryImage.isEmpty()) {
-            productImages.get(0).setPrimary(true);
-            logger.info("No primary image selected, setting first image as primary for product ID: {}", product.getId());
-        } else {
-            boolean hasPrimary = productImages.stream().anyMatch(ProductImage::isPrimary);
-            if (!hasPrimary && !productImages.isEmpty()) {
-                productImages.get(0).setPrimary(true);
-                logger.info("No primary image found, setting first image as primary for product ID: {}", product.getId());
+        return productImages;
+    }
+
+    @Transactional
+    public void updateImagePositions(Product product) {
+        logger.info("Updating image positions for product ID: {}", product.getId());
+        List<ProductImage> images = product.getImages();
+        int position = 0;
+        for (ProductImage image : images) {
+            image.setPosition(position++);
+            productImageRepository.save(image);
+        }
+        logger.info("Updated {} image positions for product ID: {}", images.size(), product.getId());
+    }
+
+    @Transactional
+    public void setPrimaryImage(Product product, Long primaryImageId) {
+        logger.info("Setting primary image ID: {} for product ID: {}", primaryImageId, product.getId());
+        List<ProductImage> images = product.getImages();
+        boolean found = false;
+
+        for (ProductImage image : images) {
+            if (image.getId() != null && image.getId().equals(primaryImageId)) {
+                image.setPrimary(true);
+                found = true;
+            } else {
+                image.setPrimary(false);
             }
+            productImageRepository.save(image);
         }
 
-        return productImages;
+        if (!found && !images.isEmpty()) {
+            images.get(0).setPrimary(true);
+            productImageRepository.save(images.get(0));
+            logger.info("Primary image ID {} not found, set first image as primary for product ID: {}", primaryImageId, product.getId());
+        } else if (!found) {
+            logger.warn("No images available to set as primary for product ID: {}", product.getId());
+        }
     }
 
     @Transactional
@@ -374,5 +425,78 @@ public class ProductService {
                 throw new RuntimeException("Failed to delete image with ID " + imageId, e);
             }
         }
+    }
+    public void deleteImageFiles(List<Long> imageIds, Long productId) {
+        List<ProductImage> images = productImageRepository.findAllById(imageIds);
+        for (ProductImage image : images) {
+            if (image.getProduct().getId().equals(productId)) {
+                try {
+                    Path filePath = Paths.get(uploadDir, image.getFilePath());
+                    Files.deleteIfExists(filePath);
+                    logger.info("Deleted image file: {}", filePath);
+                } catch (IOException e) {
+                    logger.error("Failed to delete image file: {}", image.getFilePath(), e);
+                }
+            }
+        }
+    }
+    public void cleanEmptyProductDirectories(Long productId) {
+        try {
+            Path productDir = Paths.get(uploadDir, "products", productId.toString());
+            if (Files.exists(productDir) && Files.isDirectory(productDir)) {
+                try (Stream<Path> entries = Files.list(productDir)) {
+                    if (entries.findFirst().isEmpty()) {
+                        Files.delete(productDir);
+                        logger.info("Deleted empty directory: {}", productDir);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            logger.error("Failed to clean product directory: {}", e.getMessage());
+        }
+    }
+    public void deleteImageFiles(List<Long> imageIds) {
+        List<ProductImage> images = productImageRepository.findAllById(imageIds);
+        for (ProductImage image : images) {
+            try {
+                Path filePath = Paths.get(uploadDir, image.getFilePath());
+                Files.deleteIfExists(filePath);
+                logger.info("Deleted image file: {}", filePath);
+            } catch (IOException e) {
+                logger.error("Failed to delete image file: {}", image.getFilePath(), e);
+            }
+        }
+    }
+    public void updateDiscount(Long productId, BigDecimal discountPercentage) {
+        // Находим продукт по ID
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Продукт с ID " + productId + " не найден"));
+
+        // Валидация процента скидки
+        if (discountPercentage != null) {
+            if (discountPercentage.compareTo(BigDecimal.ZERO) < 0 ||
+                    discountPercentage.compareTo(new BigDecimal("100.0")) > 0) {
+                throw new IllegalArgumentException("Процент скидки должен быть в диапазоне от 0 до 100");
+            }
+
+            // Обновляем процент скидки
+            product.setDiscountPercentage(discountPercentage);
+
+            // Рассчитываем сумму скидки, если требуется
+            if (discountPercentage.compareTo(BigDecimal.ZERO) > 0 && product.getPrice() != null) {
+                BigDecimal discountAmount = product.getPrice()
+                        .multiply(discountPercentage)
+                        .divide(new BigDecimal("100.0"), 2, RoundingMode.HALF_UP);
+                product.setDiscountAmount(discountAmount);
+            } else {
+                product.setDiscountAmount(BigDecimal.ZERO);
+            }
+
+            // Обновляем дату изменения
+            product.setUpdatedAt(LocalDateTime.now());
+        }
+
+        // Сохраняем изменения
+        productRepository.save(product);
     }
 }

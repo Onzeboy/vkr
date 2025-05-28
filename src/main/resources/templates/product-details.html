@@ -431,22 +431,24 @@
                 <div th:if="${product.images == null or product.images.isEmpty()}">
                     <img src="https://via.placeholder.com/600" alt="Нет изображения" class="carousel-image">
                 </div>
-                <div class="carousel-images" x-ref="images" :style="`transform: translateX(-${currentIndex * 100}%)`" th:unless="${product.images == null or product.images.isEmpty()}">
-                    <img th:each="image, iter : ${product.images}"
-                         th:src="@{'/uploads/' + ${image.filePath}}"
+                <div class="carousel-images" x-ref="images" :style="`transform: translateX(-${currentIndex * 100}%)`"
+                     th:unless="${product.images == null or product.images.isEmpty()}">
+                    <!-- Сначала показываем основное изображение, затем остальные -->
+                    <img th:each="image : ${#lists.sort(product.images, T(com.nzby.homeshop.Utils.ProductImageComparator).INSTANCE)}"
+                         th:src="@{'/uploaded-images/' + ${image.filePath}}"
                          th:alt="${product.name} + ' | Изображение ' + (iter.index + 1)"
-                         class="carousel-image"
-                         th:style="'border: 1px solid red;'"
-                         th:data-filepath="${image.filePath}">
+                         class="carousel-image">
                 </div>
-                <button class="carousel-button prev" @click="prevSlide" x-show="currentIndex > 0" th:unless="${product.images == null or product.images.isEmpty()}">
+                <button class="carousel-button prev" @click="prevSlide" x-show="currentIndex > 0"
+                        th:unless="${product.images == null or product.images.isEmpty()}">
                     <i class="fas fa-chevron-left"></i>
                 </button>
-                <button class="carousel-button next" @click="nextSlide" x-show="currentIndex < totalImages - 1" th:unless="${product.images == null or product.images.isEmpty()}">
+                <button class="carousel-button next" @click="nextSlide" x-show="currentIndex < totalImages - 1"
+                        th:unless="${product.images == null or product.images.isEmpty()}">
                     <i class="fas fa-chevron-right"></i>
                 </button>
                 <div class="carousel-indicators" th:unless="${product.images == null or product.images.isEmpty()}">
-        <span th:each="image, iter : ${product.images}"
+        <span th:each="image, iter : ${#lists.sort(product.images, T(com.nzby.homeshop.Utils.ProductImageComparator).INSTANCE)}"
               class="carousel-indicator"
               :class="{ 'active': currentIndex === iter.index }"
               @click="goToSlide(iter.index)"></span>
@@ -524,20 +526,40 @@
                 const imagesContainer = this.$refs.images;
                 if (imagesContainer) {
                     this.totalImages = imagesContainer.children.length;
+                    // Автоматически прокручивать каждые 5 секунд
+                    this.autoScroll = setInterval(() => {
+                        this.nextSlide();
+                    }, 5000);
                 }
             },
             prevSlide() {
                 if (this.currentIndex > 0) {
                     this.currentIndex--;
+                } else {
+                    this.currentIndex = this.totalImages - 1;
                 }
+                this.resetAutoScroll();
             },
             nextSlide() {
                 if (this.currentIndex < this.totalImages - 1) {
                     this.currentIndex++;
+                } else {
+                    this.currentIndex = 0;
                 }
+                this.resetAutoScroll();
             },
             goToSlide(index) {
                 this.currentIndex = index;
+                this.resetAutoScroll();
+            },
+            resetAutoScroll() {
+                clearInterval(this.autoScroll);
+                this.autoScroll = setInterval(() => {
+                    this.nextSlide();
+                }, 5000);
+            },
+            beforeDestroy() {
+                clearInterval(this.autoScroll);
             }
         }
     }

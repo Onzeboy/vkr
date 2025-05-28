@@ -211,7 +211,12 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">Текущие фотографии</label>
                 <div class="image-preview-container">
                     <div th:each="image : *{images}" class="image-preview-wrapper" th:data-image-id="${image.id}">
-                        <img th:src="@{'/' + ${image.filePath}}" class="image-preview"/>
+                        <img th:if="${image.filePath != null}"
+                             th:src="@{'/uploaded-images/' + ${image.filePath}}"
+                             class="image-preview"/>
+                        <img th:unless="${image.filePath != null}"
+                             src="https://via.placeholder.com/250"
+                             class="image-preview"/>
                         <span class="remove-image" th:data-image-id="${image.id}">×</span>
                         <input type="radio" name="primaryImage" th:value="${image.id}" th:checked="${image.primary}" class="absolute bottom-4 left-4"/>
                     </div>

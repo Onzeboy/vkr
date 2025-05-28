@@ -221,6 +221,14 @@
       margin-bottom: 0.5rem;
       color: var(--dark);
       font-weight: 600;
+      display: inline;
+    }
+
+    .product-weight {
+      font-size: 0.9rem;
+      color: var(--gray); /* Чуть более темный цвет для веса */
+      font-weight: 500;
+      display: inline;
     }
 
     .product-price-container {
@@ -255,6 +263,11 @@
     }
 
     .product-rating span {
+      font-size: 0.9rem;
+      color: var(--gray);
+    }
+
+    .no-rating {
       font-size: 0.9rem;
       color: var(--gray);
     }
@@ -404,7 +417,6 @@
   </style>
 </head>
 <body>
-<!-- Хедер -->
 <header>
   <div class="header-container">
     <div class="logo">
@@ -436,17 +448,20 @@
     <div th:each="product, iterStat : ${allProducts}" th:if="${iterStat.count <= 5}" class="product-card">
       <div class="product-image-container">
         <img th:src="${
-            product.images != null and !product.images.isEmpty() ?
-                (product.images.?[isPrimary == true].size() > 0 ?
-                    '/' + product.images.?[isPrimary == true][0].filePath :
-                    '/' + product.images[0].filePath) :
-                'https://via.placeholder.com/250'
-            }"
+    product.images != null and !product.images.isEmpty() ?
+        (product.images.?[isPrimary == true].size() > 0 ?
+            '/uploaded-images/' + product.images.?[isPrimary == true][0].filePath :
+            '/uploaded-images/' + product.images[0].filePath) :
+        'https://via.placeholder.com/250'
+    }"
              th:alt="${product.name}"
              class="product-image" />
       </div>
       <div class="product-info">
-        <h3 class="product-title" th:text="${product.name}"></h3>
+        <div>
+          <h3 class="product-title" th:text="${product.name}"></h3>
+          <span class="product-weight" th:text="${product.weightValue != null ? ' ' + product.weightValue + ' ' + product.weightUnit : ''}"></span>
+        </div>
         <div class="product-price-container">
           <span class="product-price" th:text="${product.price} + ' ₽'"></span>
           <span class="product-old-price" th:if="${product.discountAmount != null}" th:text="${product.price.add(product.discountAmount)} + ' ₽'"></span>
