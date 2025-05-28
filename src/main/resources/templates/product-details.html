@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${product.name} + ' - Premium Store'">Товар - Premium Store</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        :root {
+            --primary: #333333;
+            --primary-dark: #1a1a1a;
+            --accent: #666666;
+            --danger: #e63946;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --light-gray: #e9ecef;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            background-color: var(--light);
+            overflow-x: hidden;
+        }
+
+        /* Хедер */
+        header {
+            background-color: white;
+            padding: 1rem 0;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo i {
+            color: var(--accent);
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .header-nav a {
+            text-decoration: none;
+            color: var(--dark);
+            font-weight: 500;
+            position: relative;
+            padding: 0.5rem 0;
+            transition: var(--transition);
+        }
+
+        .header-nav a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--primary);
+            transition: var(--transition);
+        }
+
+        .header-nav a:hover::after {
+            width: 100%;
+        }
+
+        .header-nav a:hover {
+            color: var(--primary);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .header-actions a {
+            text-decoration: none;
+            color: var(--dark);
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .header-actions a:hover {
+            color: var(--primary);
+        }
+
+        .cart-btn {
+            position: relative;
+        }
+
+        .cart-count {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background-color: var(--danger);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+        }
+
+        /* Основное содержимое */
+        .main-content {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .product-details {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+        }
+
+        /* Верхняя часть: карусель и название с ценой */
+        .product-header {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            width: 100%;
+        }
+
+        .product-details h1 {
+            font-size: 2rem;
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Карусель изображений */
+        .carousel {
+            flex: 1;
+            min-width: 300px;
+            border: 2px solid var(--primary);
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .carousel-images {
+            display: flex;
+            transition: transform var(--transition);
+        }
+
+        .carousel-image {
+            width: 100%;
+            height: 350px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .carousel-button {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .carousel-button:hover {
+            background-color: var(--primary);
+        }
+
+        .carousel-button.prev {
+            left: 10px;
+        }
+
+        .carousel-button.next {
+            right: 10px;
+        }
+
+        .carousel-indicators {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 5px;
+        }
+
+        .carousel-indicator {
+            width: 10px;
+            height: 10px;
+            background-color: var(--gray);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .carousel-indicator.active {
+            background-color: var(--primary);
+        }
+
+        /* Информация о продукте */
+        .product-info {
+            flex: 1;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .product-title-price {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .product-price {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 1.8rem;
+        }
+
+        .product-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: auto;
+        }
+
+        .product-actions button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 20px;
+            background-color: var(--light-gray);
+            color: var(--dark);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .product-actions button:hover {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        /* Остальная информация внизу */
+        .additional-info {
+            margin-top: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            width: 100%;
+        }
+
+        .additional-info h3 {
+            font-size: 1.4rem;
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .additional-info .product-info-item {
+            padding: 0.5rem 0;
+            font-size: 1rem;
+            color: var(--gray);
+        }
+
+        .category-highlight {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        /* Заглушка для отзывов */
+        .reviews-placeholder {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background-color: var(--light-gray);
+            border-radius: 12px;
+            text-align: center;
+            color: var(--gray);
+            font-size: 1.1rem;
+            width: 100%;
+        }
+
+        /* Заглушка для рекомендованных продуктов */
+        .recommended-placeholder {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background-color: var(--light-gray);
+            border-radius: 12px;
+            text-align: center;
+            color: var(--gray);
+            font-size: 1.1rem;
+            width: 100%;
+        }
+
+        /* Стили для сообщения об ошибке */
+        .error-message {
+            background-color: var(--danger);
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            font-weight: 500;
+            border-left: 5px solid var(--primary-dark);
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .header-container {
+                padding: 0 1rem;
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .header-nav {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .header-actions {
+                gap: 1rem;
+            }
+
+            .product-details {
+                flex-direction: column;
+                padding: 1rem;
+            }
+
+            .product-header {
+                flex-direction: column;
+            }
+
+            .carousel {
+                height: 200px;
+            }
+
+            .carousel-image {
+                height: 200px;
+            }
+
+            .product-details h1 {
+                font-size: 1.5rem;
+            }
+
+            .product-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+<!-- Хедер -->
+<header>
+    <div class="header-container">
+        <div class="logo">
+            <i class="fas fa-store"></i>
+            <span>Premium Store</span>
+        </div>
+        <nav class="header-nav">
+            <a href="/products">Каталог</a>
+            <a href="#">Акции</a>
+            <a href="#">Новинки</a>
+            <a href="#">Доставка</a>
+            <a href="#">Контакты</a>
+        </nav>
+        <div class="header-actions">
+            <a href="#"><i class="fas fa-user"></i> Войти</a>
+            <a href="#" class="cart-btn">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-count">0</span>
+            </a>
+        </div>
+    </div>
+</header>
+
+<!-- Основное содержимое -->
+<main class="main-content">
+    <!-- Отображение сообщения об ошибке -->
+    <div th:if="${errorMessage}" class="error-message" th:text="${errorMessage}">
+        Ошибка при загрузке продукта
+    </div>
+
+    <div class="product-details">
+        <!-- Верхняя часть: карусель и название с ценой -->
+        <div class="product-header">
+            <!-- Карусель изображений -->
+            <div class="carousel" x-data="carouselData()" x-init="initCarousel()">
+                <div th:if="${product.images == null or product.images.isEmpty()}">
+                    <img src="https://via.placeholder.com/600" alt="Нет изображения" class="carousel-image">
+                </div>
+                <div class="carousel-images" x-ref="images" :style="`transform: translateX(-${currentIndex * 100}%)`" th:unless="${product.images == null or product.images.isEmpty()}">
+                    <img th:each="image, iter : ${product.images}"
+                         th:src="@{'/uploads/' + ${image.filePath}}"
+                         th:alt="${product.name} + ' | Изображение ' + (iter.index + 1)"
+                         class="carousel-image"
+                         th:style="'border: 1px solid red;'"
+                         th:data-filepath="${image.filePath}">
+                </div>
+                <button class="carousel-button prev" @click="prevSlide" x-show="currentIndex > 0" th:unless="${product.images == null or product.images.isEmpty()}">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button class="carousel-button next" @click="nextSlide" x-show="currentIndex < totalImages - 1" th:unless="${product.images == null or product.images.isEmpty()}">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+                <div class="carousel-indicators" th:unless="${product.images == null or product.images.isEmpty()}">
+        <span th:each="image, iter : ${product.images}"
+              class="carousel-indicator"
+              :class="{ 'active': currentIndex === iter.index }"
+              @click="goToSlide(iter.index)"></span>
+                </div>
+            </div>
+
+            <!-- Информация о продукте -->
+            <div class="product-info">
+                <!-- Название и цена -->
+                <div class="product-title-price">
+                    <h1 th:text="${product.name}">Название продукта</h1>
+                    <div class="product-price" th:if="${product.price != null}" th:text="${product.price} + ' ₽'">340.00 ₽</div>
+                </div>
+                <!-- Кнопки внизу -->
+                <div class="product-actions">
+                    <button>Добавить в корзину</button>
+                    <button>Добавить в избранное</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Остальная информация внизу -->
+        <div class="additional-info">
+            <!-- Выделенная категория -->
+            <div th:if="${product.category?.id != null}" class="category-highlight" th:text="${product.category.name}">Птица</div>
+
+            <!-- Описание -->
+            <div th:if="${product.description != null}">
+                <h3>Описание</h3>
+                <div class="product-info-item" th:text="${product.description}"></div>
+            </div>
+
+            <div th:if="${product.features != null}">
+                <h3>Характеристики</h3>
+                <div class="product-info-item" th:text="${product.features}"></div>
+            </div>
+
+            <!-- Питательная ценность -->
+            <div th:if="${product.calories != null or product.fats != null or product.proteins != null or product.carbohydrates != null}">
+                <h3>Питательная ценность</h3>
+                <div class="product-info-item">
+                    <span th:if="${product.calories != null}" th:text="'Калории: ' + ${product.calories} + ' ккал'"></span>
+                    <span th:if="${product.fats != null}" th:text="', Жиры: ' + ${product.fats} + ' г'"></span>
+                    <span th:if="${product.proteins != null}" th:text="', Белки: ' + ${product.proteins} + ' г'"></span>
+                    <span th:if="${product.carbohydrates != null}" th:text="', Углеводы: ' + ${product.carbohydrates} + ' г'"></span>
+                </div>
+            </div>
+
+            <!-- Состав -->
+            <div th:if="${product.composition != null}">
+                <h3>Состав</h3>
+                <div class="product-info-item" th:text="${product.composition}">Состав продукта</div>
+            </div>
+        </div>
+
+        <!-- Заглушка для отзывов -->
+        <div class="reviews-placeholder">
+            Здесь будут отображаться отзывы о продукте
+        </div>
+
+        <!-- Заглушка для рекомендованных продуктов -->
+        <div class="recommended-placeholder">
+            Здесь будут отображаться рекомендованные продукты
+        </div>
+    </div>
+</main>
+
+<!-- JavaScript для карусели -->
+<script>
+    function carouselData() {
+        return {
+            currentIndex: 0,
+            totalImages: 0,
+            initCarousel() {
+                const imagesContainer = this.$refs.images;
+                if (imagesContainer) {
+                    this.totalImages = imagesContainer.children.length;
+                }
+            },
+            prevSlide() {
+                if (this.currentIndex > 0) {
+                    this.currentIndex--;
+                }
+            },
+            nextSlide() {
+                if (this.currentIndex < this.totalImages - 1) {
+                    this.currentIndex++;
+                }
+            },
+            goToSlide(index) {
+                this.currentIndex = index;
+            }
+        }
+    }
+</script>
+</body>
+</html>

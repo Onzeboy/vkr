@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Редактировать продукт</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .image-preview-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+        .image-preview-wrapper {
+            position: relative;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .image-preview-wrapper:hover {
+            border-color: #3b82f6;
+            transform: scale(1.05);
+        }
+        .image-preview {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+        }
+        .remove-image {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        .remove-image:hover {
+            opacity: 1;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .hidden {
+            display: none;
+        }
+        .error-message {
+            color: #dc2626;
+            font-size: 0.875rem;
+            margin-top: 4px;
+        }
+        .input-field {
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .input-field:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+<div class="container mx-auto p-6 max-w-3xl">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Редактировать продукт</h1>
+
+    <div th:if="${successMessage}" class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded-r-lg fade-in" role="alert">
+        <span th:text="${successMessage}"></span>
+    </div>
+    <div th:if="${error}" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-r-lg fade-in" role="alert">
+        <span th:text="${error}"></span>
+    </div>
+
+    <form th:action="@{/admin/products/edit(id=${product.id})}" th:object="${product}" method="post" enctype="multipart/form-data" class="bg-white p-8 rounded-xl shadow-lg">
+        <input type="hidden" th:field="*{id}" />
+
+        <div class="mb-6">
+            <label for="categoryId" class="block text-sm font-medium text-gray-700 mb-2">Основная категория *</label>
+            <select id="categoryId" name="categoryId" class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:outline-none" required>
+                <option value="">Выберите категорию</option>
+                <option th:each="category : ${rootCategories}"
+                        th:value="${category.id}"
+                        th:text="${category.name}"
+                        th:selected="${category.id == selectedCategoryId}"></option>
+            </select>
+            <span th:if="${#fields.hasErrors('category')}" th:errors="*{category}" class="error-message"></span>
+        </div>
+
+        <div class="mb-6">
+            <label for="subcategoryId" class="block text-sm font-medium text-gray-700 mb-2">Подкатегория</label>
+            <select id="subcategoryId" name="subcategoryId" class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:outline-none">
+                <option value="">Выберите подкатегорию</option>
+                <option th:each="subcategory : ${subcategories}"
+                        th:value="${subcategory.id}"
+                        th:text="${subcategory.name}"
+                        th:selected="${subcategory.id == selectedSubcategoryId}"></option>
+            </select>
+            <span th:if="${#fields.hasErrors('category')}" th:errors="*{category}" class="error-message"></span>
+        </div>
+
+        <div id="productFields"
+             th:classappend="${categoryFields != null} ? 'fade-in' : 'hidden'"
+             class="space-y-6">
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-700 mb-2">Название продукта *</label>
+                <input type="text" id="name" th:field="*{name}" class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50" required/>
+                <span th:if="${#fields.hasErrors('name')}" th:errors="*{name}" class="error-message"></span>
+            </div>
+
+            <div>
+                <label for="brand" class="block text-sm font-medium text-gray-700 mb-2">Бренд *</label>
+                <input type="text" id="brand" th:field="*{brand}" class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50" required/>
+                <span th:if="${#fields.hasErrors('brand')}" th:errors="*{brand}" class="error-message"></span>
+            </div>
+
+            <div>
+                <label for="sku" class="block text-sm font-medium text-gray-700 mb-2">Артикул *</label>
+                <input type="text" id="sku" th:field="*{sku}" class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50" required/>
+                <span th:if="${#fields.hasErrors('sku')}" th:errors="*{sku}" class="error-message"></span>
+            </div>
+
+            <div>
+                <label for="price" class="block text-sm font-medium text-gray-700 mb-2">Цена (руб.) *</label>
+                <input type="number" id="price" th:field="*{price}" step="0.01" class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50" required/>
+                <span th:if="${#fields.hasErrors('price')}" th:errors="*{price}" class="error-message"></span>
+            </div>
+
+            <div>
+                <label for="weightValue" class="block text-sm font-medium text-gray-700 mb-2">Вес</label>
+                <div class="flex space-x-4">
+                    <div class="w-1/2">
+                        <input type="number" id="weightValue" th:field="*{weightValue}" step="0.001" class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50"/>
+                        <span th:if="${#fields.hasErrors('weightValue')}" th:errors="*{weightValue}" class="error-message"></span>
+                    </div>
+                    <div class="w-1/2">
+                        <select id="weightUnit" th:field="*{weightUnit}" class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50">
+                            <option value="">Единица измерения</option>
+                            <option value="г">г</option>
+                            <option value="кг">кг</option>
+                        </select>
+                        <span th:if="${#fields.hasErrors('weightUnit')}" th:errors="*{weightUnit}" class="error-message"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="featuresField" th:class="${categoryFields?.features} ? '' : 'hidden'">
+                <label for="features" class="block text-sm font-medium text-gray-700 mb-2">Характеристики</label>
+                <textarea id="features" th:field="*{features}" class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50 h-32 resize-y" th:required="${categoryFields?.features}"></textarea>
+                <span th:if="${#fields.hasErrors('features')}" th:errors="*{features}" class="error-message"></span>
+            </div>
+
+            <div id="descriptionField" th:class="${categoryFields?.description} ? '' : 'hidden'">
+                <label for="description" class="block text-sm font-medium text-gray-700 mb-2">Описание</label>
+                <textarea id="description" th:field="*{description}" class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50 h-32 resize-y"></textarea>
+                <span th:if="${#fields.hasErrors('description')}" th:errors="*{description}" class="error-message"></span>
+            </div>
+
+            <div id="nutritionalInfoField" th:class="${categoryFields?.nutritionalInfo} ? '' : 'hidden'">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Питательная ценность</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="calories" class="block text-sm font-medium text-gray-700 mb-1">Калории (ккал)</label>
+                        <input type="number" id="calories" th:field="*{calories}" class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50"/>
+                        <span th:if="${#fields.hasErrors('calories')}" th:errors="*{calories}" class="error-message"></span>
+                    </div>
+                    <div>
+                        <label for="fats" class="block text-sm font-medium text-gray-700 mb-1">Жиры (г)</label>
+                        <input type="number" id="fats" th:field="*{fats}" step="0.1" class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50"/>
+                        <span th:if="${#fields.hasErrors('fats')}" th:errors="*{fats}" class="error-message"></span>
+                    </div>
+                    <div>
+                        <label for="proteins" class="block text-sm font-medium text-gray-700 mb-1">Белки (г)</label>
+                        <input type="number" id="proteins" th:field="*{proteins}" step="0.1" class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50"/>
+                        <span th:if="${#fields.hasErrors('proteins')}" th:errors="*{proteins}" class="error-message"></span>
+                    </div>
+                    <div>
+                        <label for="carbohydrates" class="block text-sm font-medium text-gray-700 mb-1">Углеводы (г)</label>
+                        <input type="number" id="carbohydrates" th:field="*{carbohydrates}" step="0.1" class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50"/>
+                        <span th:if="${#fields.hasErrors('carbohydrates')}" th:errors="*{carbohydrates}" class="error-message"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="compositionField" th:class="${categoryFields?.composition} ? '' : 'hidden'">
+                <label for="composition" class="block text-sm font-medium text-gray-700 mb-2">Состав</label>
+                <textarea id="composition" th:field="*{composition}" class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50 h-32 resize-y"></textarea>
+                <span th:if="${#fields.hasErrors('composition')}" th:errors="*{composition}" class="error-message"></span>
+            </div>
+
+            <div>
+                <label for="photos" class="block text-sm font-medium text-gray-700 mb-2">Фотографии (до 10, JPEG/PNG, до 5 МБ)</label>
+                <input type="file" id="photos" name="photos[]" accept="image/jpeg,image/png" class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50"/>
+                <p class="text-sm text-gray-500 mt-2">Выберите одну или несколько фотографий. Нажмите "Добавить ещё", чтобы загрузить дополнительные.</p>
+                <button type="button" id="addPhoto" class="mt-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Добавить ещё</button>
+                <div class="image-preview-container" id="imagePreview"></div>
+                <span th:if="${#fields.hasErrors('images')}" th:errors="*{images}" class="error-message"></span>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Текущие фотографии</label>
+                <div class="image-preview-container">
+                    <div th:each="image : *{images}" class="image-preview-wrapper" th:data-image-id="${image.id}">
+                        <img th:src="@{'/' + ${image.filePath}}" class="image-preview"/>
+                        <span class="remove-image" th:data-image-id="${image.id}">×</span>
+                        <input type="radio" name="primaryImage" th:value="${image.id}" th:checked="${image.primary}" class="absolute bottom-4 left-4"/>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label for="tags" class="block text-sm font-medium text-gray-700 mb-2">Теги (через запятую)</label>
+                <input type="text"
+                       id="tags"
+                       name="tags"ё
+                       th:value="${product.tags != null ? #strings.listJoin(product.tags, ',') : ''}"
+                       class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50"/>
+                <span th:if="${#fields.hasErrors('tags')}" th:errors="*{tags}" class="error-message"></span>
+            </div>
+
+            <div>
+                <label for="stock" class="block text-sm font-medium text-gray-700 mb-2">Запас</label>
+                <input type="number" id="stock" th:field="*{stock}" class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50"/>
+                <span th:if="${#fields.hasErrors('stock')}" th:errors="*{stock}" class="error-message"></span>
+            </div>
+
+            <div>
+                <label for="status" class="block text-sm font-medium text-gray-700 mb-2">Статус</label>
+                <select id="status" th:field="*{status}" class="input-field block w-full p-3 rounded-lg border border-gray-300 bg-gray-50">
+                    <option value="">Выберите статус</option>
+                    <option th:each="status : ${T(com.nzby.homeshop.POJO.Enum.ProductStatus).values()}"
+                            th:value="${status}"
+                            th:text="${status}"></option>
+                </select>
+                <span th:if="${#fields.hasErrors('status')}" th:errors="*{status}" class="error-message"></span>
+            </div>
+
+            <div class="mt-8 flex space-x-4">
+                <button type="submit" class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">Сохранить продукт</button>
+                <a th:href="@{/admin/products}" class="w-full bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors font-medium text-center">Отмена</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    $(document).ready(function() {
+        let photoCount = $('div[data-image-id]').length;
+        const maxPhotos = 10;
+        const uploadedFiles = [];
+        const deletedImageIds = [];
+
+        $('#photos').change(function() {
+            var files = Array.from(this.files);
+            if (files.length === 0) return;
+
+            if (photoCount + files.length > maxPhotos) {
+                alert('Максимум ' + maxPhotos + ' фотографий');
+                this.value = '';
+                return;
+            }
+
+            files.forEach(function(file, fileIndex) {
+                if (!file.type.match('image/jpeg|image/png')) {
+                    alert('Файл ' + file.name + ': разрешены только JPEG и PNG');
+                    return;
+                }
+
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('Файл ' + file.name + ': размер не должен превышать 5 МБ');
+                    return;
+                }
+
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var index = photoCount++;
+                    var wrapper = $('<div>').addClass('image-preview-wrapper').attr('data-index', index);
+                    var img = $('<img>').attr('src', e.target.result).addClass('image-preview');
+                    var removeBtn = $('<span>').addClass('remove-image').text('×').click(function() {
+                        wrapper.remove();
+                        uploadedFiles.splice(index, 1);
+                        photoCount--;
+                        updatePrimaryRadio();
+                        $('#addPhoto').prop('disabled', photoCount >= maxPhotos);
+                    });
+                    var radio = $('<input>').attr({
+                        type: 'radio',
+                        name: 'primaryImage',
+                        value: 'new_' + index
+                    }).addClass('absolute bottom-4 left-4');
+                    if (index === 0 && uploadedFiles.length === 0 && $('input[name="primaryImage"]:checked').length === 0) {
+                        radio.prop('checked', true);
+                    }
+
+                    wrapper.append(img).append(removeBtn).append(radio);
+                    $('#imagePreview').append(wrapper);
+                    uploadedFiles.push(file);
+                    $('#addPhoto').prop('disabled', photoCount >= maxPhotos);
+                };
+                reader.readAsDataURL(file);
+            });
+
+            this.value = '';
+        });
+
+        $('#addPhoto').click(function() {
+            $('#photos').click();
+        });
+
+        $('.remove-image[data-image-id]').click(function() {
+            var imageId = $(this).data('image-id');
+            deletedImageIds.push(imageId);
+            $(this).closest('.image-preview-wrapper').remove();
+            photoCount--;
+            updatePrimaryRadio();
+            $('#addPhoto').prop('disabled', photoCount >= maxPhotos);
+        });
+
+        function updatePrimaryRadio() {
+            $('#imagePreview input[name="primaryImage"]').each(function(index) {
+                $(this).val('new_' + index).prop('checked', index === 0 && $('input[name="primaryImage"]:checked').length === 0);
+            });
+            if ($('input[name="primaryImage"]:checked').length === 0) {
+                $('input[name="primaryImage"]').first().prop('checked', true);
+            }
+        }
+
+        $('form').submit(function(event) {
+            console.log('Submitting form with', uploadedFiles.length, 'photos and', deletedImageIds.length, 'deleted images');
+            var $form = $(this);
+            var dataTransfer = new DataTransfer();
+            uploadedFiles.forEach(function(file) {
+                dataTransfer.items.add(file);
+            });
+            var input = $('#photos');
+            input[0].files = dataTransfer.files;
+
+            deletedImageIds.forEach(function(id) {
+                $form.append('<input type="hidden" name="deleteImages" value="' + id + '"/>');
+            });
+        });
+
+        $('#addPhoto').prop('disabled', photoCount >= maxPhotos);
+    });
+</script>
+</body>
+</html>

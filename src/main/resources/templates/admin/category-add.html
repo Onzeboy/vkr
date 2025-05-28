@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Добавить категорию</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+<div class="container mx-auto p-4">
+    <h1 class="text-2xl font-bold mb-4">Добавить категорию</h1>
+    <div th:if="${error}" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4" role="alert">
+        <span th:text="${error}"></span>
+    </div>
+    <form th:action="@{/admin/categories/add}" th:object="${categoryForm}" method="post" class="bg-white p-6 rounded-lg shadow-md">
+        <!-- Название категории -->
+        <div class="mb-4">
+            <label for="name" class="block text-sm font-medium text-gray-700">Название категории *</label>
+            <input type="text" id="name" th:field="*{name}" class="mt-1 block w-full p-2 rounded-md border-gray-300 shadow-sm" required/>
+            <span th:if="${#fields.hasErrors('name')}" th:errors="*{name}" class="text-red-500 text-sm"></span>
+        </div>
+
+        <!-- Родительская категория -->
+        <div class="mb-4">
+            <label for="parentId" class="block text-sm font-medium text-gray-700">Родительская категория</label>
+            <select id="parentId" th:field="*{parentId}" class="mt-1 block w-full p-2 rounded-md border-gray-300 shadow-sm">
+                <option value="">Без родительской категории</option>
+                <option th:each="cat : ${allCategories}" th:value="${cat.id}" th:text="${cat.name}"></option>
+            </select>
+            <span th:if="${#fields.hasErrors('parentId')}" th:errors="*{parentId}" class="text-red-500 text-sm"></span>
+        </div>
+
+        <!-- Поля продукта -->
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700">Поля продукта</label>
+            <p class="text-sm text-gray-500 mb-2">Выберите поля, которые будут доступны для продуктов в этой категории.</p>
+            <div class="mt-2">
+                <input type="checkbox" th:field="*{productFields['features']}" th:value="true" th:id="'features'" class="mr-2"/>
+                <label th:for="'features'" class="text-gray-700">Характеристики</label>
+            </div>
+            <div class="mt-2">
+                <input type="checkbox" th:field="*{productFields['description']}" th:value="true" th:id="'description'" class="mr-2"/>
+                <label th:for="'description'" class="text-gray-700">Описание</label>
+            </div>
+            <div class="mt-2">
+                <input type="checkbox" th:field="*{productFields['nutritionalInfo']}" th:value="true" th:id="'nutritionalInfo'" class="mr-2"/>
+                <label th:for="'nutritionalInfo'" class="text-gray-700">Пищевая ценность (Калорийность, Жиры, Белки, Углеводы)</label>
+            </div>
+            <div class="mt-2">
+                <input type="checkbox" th:field="*{productFields['composition']}" th:value="true" th:id="'composition'" class="mr-2"/>
+                <label th:for="'composition'" class="text-gray-700">Состав</label>
+            </div>
+        </div>
+
+        <!-- Кнопка отправки -->
+        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Добавить категорию</button>
+    </form>
+</div>
+</body>
+</html>
