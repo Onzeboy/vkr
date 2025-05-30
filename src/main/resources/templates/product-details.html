@@ -433,10 +433,9 @@
                 </div>
                 <div class="carousel-images" x-ref="images" :style="`transform: translateX(-${currentIndex * 100}%)`"
                      th:unless="${product.images == null or product.images.isEmpty()}">
-                    <!-- Сначала показываем основное изображение, затем остальные -->
-                    <img th:each="image : ${#lists.sort(product.images, T(com.nzby.homeshop.Utils.ProductImageComparator).INSTANCE)}"
+                    <img th:each="image, imageStat : ${product.images}"
                          th:src="@{'/uploaded-images/' + ${image.filePath}}"
-                         th:alt="${product.name} + ' | Изображение ' + (iter.index + 1)"
+                         th:alt="${product.name} + ' | Изображение ' + ${imageStat.index + 1}"
                          class="carousel-image">
                 </div>
                 <button class="carousel-button prev" @click="prevSlide" x-show="currentIndex > 0"
@@ -448,10 +447,10 @@
                     <i class="fas fa-chevron-right"></i>
                 </button>
                 <div class="carousel-indicators" th:unless="${product.images == null or product.images.isEmpty()}">
-        <span th:each="image, iter : ${#lists.sort(product.images, T(com.nzby.homeshop.Utils.ProductImageComparator).INSTANCE)}"
+        <span th:each="image, imageStat : ${product.images}"
               class="carousel-indicator"
-              :class="{ 'active': currentIndex === iter.index }"
-              @click="goToSlide(iter.index)"></span>
+              :class="{ 'active': currentIndex === imageStat.index }"
+              @click="goToSlide(imageStat.index)"></span>
                 </div>
             </div>
 

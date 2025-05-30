@@ -4,6 +4,7 @@ import com.nzby.homeshop.POJO.Enum.ProductStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -131,14 +132,9 @@ public class Product {
             inverseJoinColumns = @JoinColumn(name = "category_id"))
     private Set<Category> categories = new HashSet<>();
 
-    @DecimalMin(value = "0.0", message = "Процент скидки не может быть отрицательным")
-    @DecimalMax(value = "100.0", message = "Процент скидки не может превышать 100")
-    @Column(name = "discount_percentage")
-    private BigDecimal discountPercentage;
-
-    @DecimalMin(value = "0.0", message = "Сумма скидки не может быть отрицательной")
-    @Column(name = "discount_amount")
-    private BigDecimal discountAmount;
+    @DecimalMin(value = "0.0", message = "Цена со скидкой не может быть отрицательной")
+    @Column(name = "discounted_price")
+    private BigDecimal discountedPrice;
 
     @Column(name = "discount_start_date")
     private LocalDateTime discountStartDate;
@@ -384,20 +380,12 @@ public class Product {
         this.categories.remove(category);
     }
 
-    public BigDecimal getDiscountPercentage() {
-        return discountPercentage;
+    public BigDecimal getDiscountedPrice() {
+        return discountedPrice;
     }
 
-    public void setDiscountPercentage(BigDecimal discountPercentage) {
-        this.discountPercentage = discountPercentage;
-    }
-
-    public BigDecimal getDiscountAmount() {
-        return discountAmount;
-    }
-
-    public void setDiscountAmount(BigDecimal discountAmount) {
-        this.discountAmount = discountAmount;
+    public void setDiscountedPrice(BigDecimal discountedPrice) {
+        this.discountedPrice = discountedPrice;
     }
 
     public LocalDateTime getDiscountStartDate() {
@@ -416,6 +404,21 @@ public class Product {
         this.discountEndDate = discountEndDate;
     }
 
+    public int getDiscountPercentage() {
+        if (price == null || discountedPrice == null || price.compareTo(BigDecimal.ZERO) <= 0 || discountedPrice.compareTo(price) >= 0) {
+            return 0;
+        }
+        try {
+            BigDecimal discount = price.subtract(discountedPrice)
+                    .divide(price, 4, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100))
+                    .setScale(0, RoundingMode.HALF_UP);
+            return discount.intValue();
+        } catch (Exception e) {
+            // Логирование ошибки, если нужно
+            return 0;
+        }
+    }
     @Override
     public String toString() {
         return "Product{" +

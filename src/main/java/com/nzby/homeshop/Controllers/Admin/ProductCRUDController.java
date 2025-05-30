@@ -19,9 +19,11 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Controller
 @RequestMapping("/admin/products")
@@ -448,15 +450,59 @@ public class ProductCRUDController {
         }
         return category.getProductFields();
     }
-    @PostMapping("/update")
-    public String updateProduct(@ModelAttribute Product product, Model model) {
-        if (product.getDiscountPercentage() != null) {
-            // Update only discount if provided
-            productService.updateDiscount(product.getId(), product.getDiscountPercentage());
-        } else if (product.getPrice() != null || product.getStatus() != null) {
-            // Update all fields if price or status is provided
-            productService.updateProduct(product);
+
+    @GetMapping("/discount")
+    public String showDiscountPage(@RequestParam("id") Long id, Model model) {
+        Optional<Product> optionalProduct = productService.findById(id);
+        if (optionalProduct.isPresent()) {
+            model.addAttribute("product", optionalProduct.get());
+            return "admin/discount"; // Template name
+        } else {
+            model.addAttribute("error", "Продукт с ID " + id + " не найден.");
+            return "error"; // Create an error.html template if needed
         }
-        return "redirect:/admin/products?successMessage=Продукт успешно обновлен";
+    }
+
+    @PostMapping("/update")
+    public String updateProduct(@ModelAttribute Product updatedProduct, @RequestParam("id") Long id, Model model, RedirectAttributes redirectAttributes) {
+        try {
+            // Получаем существующий продукт
+            Product existingProduct = productService.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Продукт с ID " + id + " не найден"));
+
+            // Обновляем только измененные поля
+            if (updatedProduct.getPrice() != null) {
+                existingProduct.setPrice(updatedProduct.getPrice());
+            }
+            if (updatedProduct.getDiscountedPrice() != null) {
+                existingProduct.setDiscountedPrice(updatedProduct.getDiscountedPrice());
+            }
+            if (updatedProduct.getDiscountStartDate() != null) {
+                existingProduct.setDiscountStartDate(updatedProduct.getDiscountStartDate());
+            }
+            if (updatedProduct.getDiscountEndDate() != null) {
+                existingProduct.setDiscountEndDate(updatedProduct.getDiscountEndDate());
+            }
+            if (updatedProduct.getStatus() != null) {
+                existingProduct.setStatus(ProductStatus.valueOf(updatedProduct.getStatus().toString()));
+            }
+
+            // Обновляем дату последнего изменения
+            existingProduct.setUpdatedAt(LocalDateTime.now());
+
+            // Сохраняем изменения
+            productService.updateProduct(existingProduct);
+
+            redirectAttributes.addFlashAttribute("successMessage", "Продукт успешно обновлен");
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("error", "Ошибка при обновлении продукта: " + e.getMessage());
+            model.addAttribute("product", productService.findById(id).orElse(null));
+            return "admin/discount";
+        } catch (Exception e) {
+            model.addAttribute("error", "Ошибка при обновлении продукта: " + e.getMessage());
+            model.addAttribute("product", productService.findById(id).orElse(null));
+            return "admin/discount";
+        }
+        return "redirect:/admin/products";
     }
 }

@@ -38,8 +38,13 @@ public class ProductController {
         List<ProductImage> sortedImages = productService.getSortedImagesForProduct(id);
 
         // Синхронизируем product.images с sortedImages
-        product.getImages().clear();
-        product.getImages().addAll(sortedImages);
+        if (product.getImages() != null) {
+            product.getImages().clear();
+            product.getImages().addAll(sortedImages);
+        } else {
+            // Если коллекция не инициализирована, создаём новый список
+            product.setImages(sortedImages);
+        }
 
         // Выбираем основное изображение
         ProductImage primaryImage = productService.getPrimaryImage(sortedImages);
@@ -47,7 +52,6 @@ public class ProductController {
         // Передаём данные в модель
         model.addAttribute("product", product);
         model.addAttribute("primaryImage", primaryImage);
-        model.addAttribute("sortedImages", sortedImages);
         model.addAttribute("categoryFields", product.getCategory() != null ? product.getCategory().getProductFields() : new HashMap<>());
 
         return "product-details";

@@ -9,6 +9,7 @@ import com.nzby.homeshop.POJO.ProductImage;
 import com.nzby.homeshop.Repository.CategoryRepository;
 import com.nzby.homeshop.Repository.ProductImageRepository;
 import com.nzby.homeshop.Repository.ProductRepository;
+import com.nzby.homeshop.Utils.ProductImageComparator;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -365,20 +366,27 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public List<ProductImage> getSortedImagesForProduct(Long productId) {
-        logger.info("Loading images for product ID: {}", productId);
-        List<ProductImage> images = productImageRepository.findByProductId(productId);
-        logger.info("Found {} images", images.size());
-        return images.stream()
-                .sorted(Comparator.comparing(i -> i.getPosition() != null ? i.getPosition() : Integer.MAX_VALUE))
-                .collect(Collectors.toList());
+        Product product = findProductById(productId);
+        if (product == null || product.getImages() == null) {
+            return new ArrayList<>(); // Возвращаем пустой список, если продукта или изображений нет
+        }
+
+        // Создаём новый список из изображений продукта
+        List<ProductImage> images = new ArrayList<>(product.getImages());
+        images.sort(ProductImageComparator.INSTANCE);
+        return images;
     }
 
     @Transactional(readOnly = true)
-    public ProductImage getPrimaryImage(List<ProductImage> sortedImages) {
-        return sortedImages.stream()
+    public ProductImage getPrimaryImage(List<ProductImage> images) {
+        if (images == null || images.isEmpty()) {
+            return null;
+        }
+        // Возвращаем первое изображение с isPrimary = true или первое изображение, если основного нет
+        return images.stream()
                 .filter(ProductImage::isPrimary)
                 .findFirst()
-                .orElse(sortedImages.isEmpty() ? null : sortedImages.get(0));
+                .orElse(images.get(0));
     }
 
     @Transactional
@@ -467,36 +475,32 @@ public class ProductService {
             }
         }
     }
-    public void updateDiscount(Long productId, BigDecimal discountPercentage) {
-        // Находим продукт по ID
+    public void updateDiscount(Long productId, BigDecimal discountedPrice) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Продукт с ID " + productId + " не найден"));
 
-        // Валидация процента скидки
-        if (discountPercentage != null) {
-            if (discountPercentage.compareTo(BigDecimal.ZERO) < 0 ||
-                    discountPercentage.compareTo(new BigDecimal("100.0")) > 0) {
-                throw new IllegalArgumentException("Процент скидки должен быть в диапазоне от 0 до 100");
+        if (discountedPrice != null) {
+            if (discountedPrice.compareTo(BigDecimal.ZERO) < 0) {
+                throw new IllegalArgumentException("Цена со скидкой не может быть отрицательной");
             }
-
-            // Обновляем процент скидки
-            product.setDiscountPercentage(discountPercentage);
-
-            // Рассчитываем сумму скидки, если требуется
-            if (discountPercentage.compareTo(BigDecimal.ZERO) > 0 && product.getPrice() != null) {
-                BigDecimal discountAmount = product.getPrice()
-                        .multiply(discountPercentage)
-                        .divide(new BigDecimal("100.0"), 2, RoundingMode.HALF_UP);
-                product.setDiscountAmount(discountAmount);
-            } else {
-                product.setDiscountAmount(BigDecimal.ZERO);
+            if (product.getPrice() != null && discountedPrice.compareTo(product.getPrice()) > 0) {
+                throw new IllegalArgumentException("Цена со скидкой не может превышать исходную цену");
             }
-
-            // Обновляем дату изменения
+            product.setDiscountedPrice(discountedPrice);
             product.setUpdatedAt(LocalDateTime.now());
         }
 
-        // Сохраняем изменения
+        // Save the changes
         productRepository.save(product);
+    }
+
+    public Optional<Product> findById(Long id) {
+        Optional<Product> product = productRepository.findById(id);
+        return product;
+    }
+
+    public Product getProductById(Long productId) {
+        return productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
     }
 }
