@@ -6,7 +6,6 @@
   <title>Premium Store - Главная</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* Существующие стили остаются без изменений */
     :root {
       --primary: #333333;
       --primary-dark: #1a1a1a;
@@ -58,6 +57,7 @@
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      text-decoration: none;
     }
 
     .logo i {
@@ -200,6 +200,10 @@
       height: 220px;
     }
 
+    .product-image-link {
+      text-decoration: none;
+    }
+
     .product-image {
       width: 100%;
       height: 100%;
@@ -207,8 +211,9 @@
       transition: var(--transition);
     }
 
-    .product-card:hover .product-image {
+    .product-image:hover {
       transform: scale(1.05);
+      opacity: 0.8;
     }
 
     .product-info {
@@ -489,15 +494,40 @@
       min-width: 20px;
       text-align: center;
     }
+    .stars-container {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .star {
+      position: relative;
+      display: inline-block;
+      width: 0.9rem;
+      height: 0.9rem;
+      color: #1a1a1a;
+    }
+
+    .star i {
+      position: absolute;
+      top: 0;
+      left: 0;
+      color: #ffc107; /* Цвет заполненной звезды */
+      clip-path: inset(0 calc(100% - (var(--rating) * 100%)) 0 0);
+    }
+
+    .star i.fas.fa-star {
+      font-size: 0.9rem;
+    }
   </style>
 </head>
 <body>
 <header>
   <div class="header-container">
-    <div class="logo">
+    <a href="/" class="logo">
       <i class="fas fa-store"></i>
       <span>Premium Store</span>
-    </div>
+    </a>
     <nav class="header-nav">
       <a href="/products">Товары</a>
       <a href="#">Продукты</a>
@@ -512,7 +542,7 @@
       <a th:href="@{/auth/logout}" th:if="${isAuthenticated}">
         <i class="fas fa-sign-out-alt"></i> Выйти
       </a>
-      <a href="#" class="cart-btn">
+      <a href="/cart" class="cart-btn">
         <i class="fas fa-shopping-cart"></i>
         <span class="cart-count" th:text="${cartCount}">0</span>
       </a>
@@ -527,15 +557,17 @@
     </div>
     <div th:each="product, iterStat : ${allProducts}" th:if="${iterStat.count <= 5}" class="product-card">
       <div class="product-image-container">
-        <img th:src="${
-            product.images != null and !product.images.isEmpty() ?
-                (product.images.?[isPrimary == true].size() > 0 ?
-                    '/uploaded-images/' + product.images.?[isPrimary == true][0].filePath :
-                    '/uploaded-images/' + product.images[0].filePath) :
-                'https://via.placeholder.com/250'
-            }"
-             th:alt="${product.name}"
-             class="product-image" />
+        <a th:href="@{/products/{id}(id=${product.id})}" class="product-image-link">
+          <img th:src="${
+              product.images != null and !product.images.isEmpty() ?
+                  (product.images.?[isPrimary == true].size() > 0 ?
+                      '/uploaded-images/' + product.images.?[isPrimary == true][0].filePath :
+                      '/uploaded-images/' + product.images[0].filePath) :
+                  'https://via.placeholder.com/250'
+              }"
+               th:alt="${product.name}"
+               class="product-image" />
+        </a>
       </div>
       <div class="product-info">
         <div>
@@ -549,13 +581,15 @@
         <div class="product-badge" th:if="${product.getDiscountPercentage() > 0}" th:text="'-' + ${product.getDiscountPercentage()} + '%'"></div>
         <div class="product-badge" th:if="${product.status == T(com.nzby.homeshop.POJO.Enum.ProductStatus).NEW}">Новинка</div>
         <div class="product-badge" th:if="${product.status == T(com.nzby.homeshop.POJO.Enum.ProductStatus).FEATURED}">Рекомендуем</div>
-        <div class="product-rating">
+        <div class="product-rating" th:data-product-id="${product.id}">
           <th:block th:if="${product.averageRating != null and product.averageRating > 0}">
-            <i th:each="i : ${#numbers.sequence(1, 5)}"
-               th:class="${i <= product.averageRating.intValue() ? 'fas fa-star' :
-                   (i == product.averageRating.intValue() + 1 and
-                    product.averageRating - product.averageRating.intValue() >= 0.5 ? 'fas fa-star-half-alt' : 'far fa-star')}"
-               class="fa-star"></i>
+            <div class="stars-container">
+              <th:block th:each="i : ${#numbers.sequence(1, 5)}">
+        <span class="star" th:style="${'--rating: ' + (i <= product.averageRating ? 1 : (i - 1 < product.averageRating ? product.averageRating - (i - 1) : 0))}">
+          <i class="fas fa-star"></i>
+        </span>
+              </th:block>
+            </div>
             <span th:text="'(' + ${product.ratingsCount != null ? product.ratingsCount : 0} + ')'"></span>
           </th:block>
           <th:block th:unless="${product.averageRating != null and product.averageRating > 0}">
@@ -594,56 +628,73 @@
 </main>
 <script>
   document.addEventListener('DOMContentLoaded', async function() {
-    const MAX_QUANTITY = 10; // Установлено ограничение в 10 единиц
+    const MAX_QUANTITY = 10;
     const cartButtons = document.querySelectorAll('.add-to-cart');
     const cartCount = document.querySelector('.cart-count');
 
-    // Загружаем текущее состояние корзины и остатки товаров
     let cartItems = [];
-    let stockQuantities = {}; // {productId: availableQuantity}
+    let stockQuantities = {};
 
-    try {
-      // Загружаем корзину
-      const cartResponse = await fetch('/api/cart/items');
-      if (cartResponse.ok) {
-        cartItems = await cartResponse.json();
-        cartCount.textContent = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-      }
-
-      // Загружаем остатки товаров
-      const stockResponse = await fetch('/api/products/stock');
-      if (stockResponse.ok) {
-        const stockData = await stockResponse.json();
-        stockData.forEach(item => {
-          stockQuantities[item.productId] = Math.min(item.quantity, MAX_QUANTITY);
+    // Загрузка корзины и остатков
+    async function initializeCart() {
+      try {
+        const cartResponse = await fetch('/api/cart/items', {
+          headers: { 'Accept': 'application/json' }
         });
+        if (cartResponse.ok) {
+          cartItems = await cartResponse.json();
+          cartCount.textContent = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+        } else {
+          console.warn('Не удалось загрузить элементы корзины:', cartResponse.status);
+          cartCount.textContent = '0';
+        }
+
+        const stockResponse = await fetch('/api/products/stock', {
+          headers: { 'Accept': 'application/json' }
+        });
+        if (stockResponse.ok) {
+          const stockData = await stockResponse.json();
+          stockData.forEach(item => {
+            stockQuantities[item.productId] = Math.min(item.quantity, MAX_QUANTITY);
+          });
+        } else {
+          console.warn('Не удалось загрузить данные об остатках:', stockResponse.status);
+        }
+      } catch (error) {
+        console.error('Ошибка при загрузке данных:', error);
+        cartCount.textContent = '0';
       }
-    } catch (error) {
-      console.error('Ошибка при загрузке данных:', error);
     }
 
-    // Инициализируем кнопки с учетом текущей корзины
-    cartButtons.forEach(button => {
-      const productId = button.getAttribute('data-product-id');
-      const cartItem = cartItems.find(item => item.productId == productId);
-      const available = Math.min(stockQuantities[productId] || MAX_QUANTITY, MAX_QUANTITY);
+    // Инициализация кнопок корзины
+    async function initializeCartButtons() {
+      await initializeCart();
+      cartButtons.forEach(button => {
+        const productId = button.getAttribute('data-product-id');
+        if (!productId) return;
 
-      // Добавляем информацию о доступном количестве
-      button.setAttribute('data-max-quantity', available);
+        const cartItem = cartItems.find(item => item.productId == productId);
+        const available = stockQuantities[productId] !== undefined ? Math.min(stockQuantities[productId], MAX_QUANTITY) : MAX_QUANTITY;
 
-      if (cartItem) {
-        updateCartButton(button, {
-          cartItemId: cartItem.id,
-          totalItems: cartItems.reduce((sum, item) => sum + item.quantity, 0)
-        }, Math.min(cartItem.quantity, MAX_QUANTITY));
-      }
-    });
+        button.setAttribute('data-max-quantity', available);
 
-    // Обработчик добавления в корзину
+        if (cartItem) {
+          updateCartButton(button, {
+            cartItemId: cartItem.id,
+            totalItems: cartItems.reduce((sum, item) => sum + item.quantity, 0),
+            quantity: Math.min(cartItem.quantity, available)
+          });
+        }
+      });
+    }
+
+    initializeCartButtons();
+
+    // Обработка кликов по кнопке "В корзину"
     cartButtons.forEach(button => {
       button.addEventListener('click', async function(e) {
-        if (!this.classList.contains('add-to-cart') ||
-                this.classList.contains('in-cart')) return;
+        e.preventDefault();
+        if (this.classList.contains('in-cart')) return;
 
         const productId = this.getAttribute('data-product-id');
         const available = parseInt(this.getAttribute('data-max-quantity')) || MAX_QUANTITY;
@@ -656,85 +707,43 @@
         try {
           const response = await fetch('/api/cart/add', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              productId: productId,
-              quantity: 1
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId, quantity: 1 })
           });
 
           if (response.ok) {
             const data = await response.json();
             updateCartButton(this, data);
             cartCount.textContent = data.totalItems;
-
-            // Обновляем доступное количество
             const newAvailable = available - 1;
-            this.setAttribute('data-max-quantity', newAvailable > 0 ? newAvailable : 0);
+            this.setAttribute('data-max-quantity', newAvailable >= 0 ? newAvailable : 0);
           } else {
             const errorText = await response.text();
             alert(errorText || 'Ошибка при добавлении товара');
-            if (response.status === 401) {
-              window.location.href = '/auth/login';
-            }
           }
         } catch (error) {
-          console.error('Ошибка при добавлении товара в корзину:', error);
+          console.error('Ошибка при добавлении в корзину:', error);
           alert('Произошла ошибка при добавлении товара в корзину');
         }
       });
     });
 
-    // Обработчики для кнопок изменения количества
-    document.addEventListener('click', function(e) {
-      if (e.target.classList.contains('cart-minus') || e.target.closest('.cart-minus')) {
-        e.preventDefault();
-        e.stopPropagation();
-        handleQuantityChange(e.target, -1);
-      }
-
-      if (e.target.classList.contains('cart-plus') || e.target.closest('.cart-plus')) {
-        e.preventDefault();
-        e.stopPropagation();
-        handleQuantityChange(e.target, 1);
-      }
-    });
-
-    // Обновление кнопки корзины
-    function updateCartButton(button, data, initialQuantity = 1) {
-      const maxAvailable = parseInt(button.getAttribute('data-max-quantity')) || MAX_QUANTITY;
-      const actualQuantity = Math.min(initialQuantity, maxAvailable);
-
-      button.classList.add('in-cart');
-      button.innerHTML = `
-        <span class="cart-text">В корзине</span>
-        <button class="cart-minus">-</button>
-        <span class="cart-quantity" data-cart-item-id="${data.cartItemId}">${actualQuantity}</span>
-        <button class="cart-plus">+</button>
-      `;
-
-      // Проверяем доступное количество
-      const plusBtn = button.querySelector('.cart-plus');
-      if (plusBtn) {
-        plusBtn.disabled = actualQuantity >= maxAvailable;
-        plusBtn.style.opacity = actualQuantity >= maxAvailable ? '0.5' : '1';
-        plusBtn.title = actualQuantity >= maxAvailable ? `Максимальное количество: ${maxAvailable} шт.` : '';
-      }
-    }
-
     // Обработка изменения количества
-    async function handleQuantityChange(element, change) {
-      const button = element.closest('.add-to-cart');
+    document.addEventListener('click', async function(e) {
+      const target = e.target.closest('.cart-minus') || e.target.closest('.cart-plus');
+      if (!target) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const button = target.closest('.add-to-cart');
       const quantityEl = button.querySelector('.cart-quantity');
       const plusBtn = button.querySelector('.cart-plus');
       const currentQuantity = parseInt(quantityEl.textContent);
+      const change = target.classList.contains('cart-minus') ? -1 : 1;
       const newQuantity = currentQuantity + change;
       const cartItemId = quantityEl.getAttribute('data-cart-item-id');
       const maxAvailable = parseInt(button.getAttribute('data-max-quantity')) || MAX_QUANTITY;
 
-      // Проверка доступного количества
       if (newQuantity > MAX_QUANTITY) {
         alert(`Максимальное количество одного товара: ${MAX_QUANTITY} шт.`);
         return;
@@ -746,39 +755,32 @@
             const response = await fetch(`/api/cart/remove?cartItemId=${cartItemId}`, {
               method: 'DELETE'
             });
-
             if (response.ok) {
               const data = await response.json();
               resetCartButton(button, data.totalItems);
-              // Возвращаем товар в доступные
               button.setAttribute('data-max-quantity', maxAvailable + 1);
+            } else {
+              alert('Ошибка при удалении товара');
             }
           } catch (error) {
             console.error('Ошибка при удалении товара:', error);
+            alert('Произошла ошибка при удалении товара');
           }
         }
       } else {
         try {
           const response = await fetch('/api/cart/update', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              cartItemId: cartItemId,
-              quantity: newQuantity
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cartItemId, quantity: newQuantity })
           });
 
           if (response.ok) {
             const data = await response.json();
             quantityEl.textContent = data.quantity;
             cartCount.textContent = data.totalItems;
-
-            // Обновляем доступное количество
             button.setAttribute('data-max-quantity', maxAvailable - change);
 
-            // Блокируем кнопку "+" при достижении максимума
             if (plusBtn) {
               plusBtn.disabled = data.quantity >= maxAvailable;
               plusBtn.style.opacity = data.quantity >= maxAvailable ? '0.5' : '1';
@@ -793,9 +795,28 @@
           alert('Произошла ошибка при обновлении количества');
         }
       }
+    });
+
+    function updateCartButton(button, data) {
+      const maxAvailable = parseInt(button.getAttribute('data-max-quantity')) || MAX_QUANTITY;
+      const actualQuantity = Math.min(data.quantity || 1, maxAvailable);
+
+      button.classList.add('in-cart');
+      button.innerHTML = `
+            <span class="cart-text">В корзине</span>
+            <button class="cart-minus">-</button>
+            <span class="cart-quantity" data-cart-item-id="${data.cartItemId}">${actualQuantity}</span>
+            <button class="cart-plus">+</button>
+        `;
+
+      const plusBtn = button.querySelector('.cart-plus');
+      if (plusBtn) {
+        plusBtn.disabled = actualQuantity >= maxAvailable;
+        plusBtn.style.opacity = actualQuantity >= maxAvailable ? '0.5' : '1';
+        plusBtn.title = actualQuantity >= maxAvailable ? `Максимальное количество: ${maxAvailable} шт.` : '';
+      }
     }
 
-    // Сброс кнопки в исходное состояние
     function resetCartButton(button, newCartCount) {
       button.classList.remove('in-cart');
       button.innerHTML = '<i class="fas fa-cart-plus"></i> В корзину';

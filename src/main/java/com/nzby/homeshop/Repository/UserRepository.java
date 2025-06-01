@@ -16,7 +16,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
     default boolean existsByEmailIgnoreCase(String email) {
         return findByEmail(email.toLowerCase()).isPresent();
     }
-    // Можно добавить другие методы по необходимости, например:
-    // List<User> findByRole(Role role);
-    // List<User> findByCreatedAtAfter(LocalDateTime date);
+
 }

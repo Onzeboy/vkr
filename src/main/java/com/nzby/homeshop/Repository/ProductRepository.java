@@ -26,4 +26,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.category LEFT JOIN FETCH p.images WHERE p.id = :id")
     Product refreshWithCategoryAndImages(@Param("id") Long id);
+
+    @Query(value = "SELECT COALESCE(AVG(rating), 0.0) as avg_rating, COUNT(*) as rating_count " +
+            "FROM reviews WHERE product_id = :productId",
+            nativeQuery = true)
+    Object[] getAverageRatingAndCount(@Param("productId") Long productId);
 }

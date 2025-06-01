@@ -142,6 +142,9 @@ public class Product {
     @Column(name = "discount_end_date")
     private LocalDateTime discountEndDate;
 
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Review> reviews = new ArrayList<>();
+
 
     // Конструкторы
     public Product() {
@@ -402,6 +405,42 @@ public class Product {
 
     public void setDiscountEndDate(LocalDateTime discountEndDate) {
         this.discountEndDate = discountEndDate;
+    }
+
+    public List<Review> getReviews() {
+        return reviews;
+    }
+
+    public void setReviews(List<Review> reviews) {
+        this.reviews = reviews;
+        recalculateAverageRating();
+    }
+
+    public void addReview(Review review) {
+        reviews.add(review);
+        recalculateAverageRating();
+    }
+
+    public void removeReview(Review review) {
+        reviews.remove(review);
+        recalculateAverageRating();
+    }
+
+    private void recalculateAverageRating() {
+        if (reviews.isEmpty()) {
+            this.averageRating = BigDecimal.ZERO;
+            this.ratingsCount = 0;
+            System.out.println("No reviews, setting averageRating=0, ratingsCount=0");
+        } else {
+            double avg = reviews.stream()
+                    .filter(review -> review.getRating() != null)
+                    .mapToInt(Review::getRating)
+                    .average()
+                    .orElse(0.0);
+            this.averageRating = BigDecimal.valueOf(avg).setScale(1, RoundingMode.HALF_UP);
+            this.ratingsCount = reviews.size();
+            System.out.println("Calculated averageRating=" + this.averageRating + ", ratingsCount=" + this.ratingsCount);
+        }
     }
 
     public int getDiscountPercentage() {

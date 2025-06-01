@@ -6,9 +6,11 @@ import com.nzby.homeshop.POJO.Enum.ProductCategory;
 import com.nzby.homeshop.POJO.Enum.ProductStatus;
 import com.nzby.homeshop.POJO.Product;
 import com.nzby.homeshop.POJO.ProductImage;
+import com.nzby.homeshop.POJO.Review;
 import com.nzby.homeshop.Repository.CategoryRepository;
 import com.nzby.homeshop.Repository.ProductImageRepository;
 import com.nzby.homeshop.Repository.ProductRepository;
+import com.nzby.homeshop.Repository.ReviewRepository;
 import com.nzby.homeshop.Utils.ProductImageComparator;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
@@ -44,6 +46,9 @@ public class ProductService {
 
     @Autowired
     private CategoryRepository categoryRepository;
+
+    @Autowired
+    private ReviewRepository reviewRepository;
 
     @Autowired
     private ProductImageRepository productImageRepository;
@@ -434,35 +439,8 @@ public class ProductService {
             }
         }
     }
-    public void deleteImageFiles(List<Long> imageIds, Long productId) {
-        List<ProductImage> images = productImageRepository.findAllById(imageIds);
-        for (ProductImage image : images) {
-            if (image.getProduct().getId().equals(productId)) {
-                try {
-                    Path filePath = Paths.get(uploadDir, image.getFilePath());
-                    Files.deleteIfExists(filePath);
-                    logger.info("Deleted image file: {}", filePath);
-                } catch (IOException e) {
-                    logger.error("Failed to delete image file: {}", image.getFilePath(), e);
-                }
-            }
-        }
-    }
-    public void cleanEmptyProductDirectories(Long productId) {
-        try {
-            Path productDir = Paths.get(uploadDir, "products", productId.toString());
-            if (Files.exists(productDir) && Files.isDirectory(productDir)) {
-                try (Stream<Path> entries = Files.list(productDir)) {
-                    if (entries.findFirst().isEmpty()) {
-                        Files.delete(productDir);
-                        logger.info("Deleted empty directory: {}", productDir);
-                    }
-                }
-            }
-        } catch (IOException e) {
-            logger.error("Failed to clean product directory: {}", e.getMessage());
-        }
-    }
+
+
     public void deleteImageFiles(List<Long> imageIds) {
         List<ProductImage> images = productImageRepository.findAllById(imageIds);
         for (ProductImage image : images) {
@@ -475,25 +453,6 @@ public class ProductService {
             }
         }
     }
-    public void updateDiscount(Long productId, BigDecimal discountedPrice) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new EntityNotFoundException("Продукт с ID " + productId + " не найден"));
-
-        if (discountedPrice != null) {
-            if (discountedPrice.compareTo(BigDecimal.ZERO) < 0) {
-                throw new IllegalArgumentException("Цена со скидкой не может быть отрицательной");
-            }
-            if (product.getPrice() != null && discountedPrice.compareTo(product.getPrice()) > 0) {
-                throw new IllegalArgumentException("Цена со скидкой не может превышать исходную цену");
-            }
-            product.setDiscountedPrice(discountedPrice);
-            product.setUpdatedAt(LocalDateTime.now());
-        }
-
-        // Save the changes
-        productRepository.save(product);
-    }
-
     public Optional<Product> findById(Long id) {
         Optional<Product> product = productRepository.findById(id);
         return product;

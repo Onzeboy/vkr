@@ -4,6 +4,7 @@ import com.nzby.homeshop.POJO.User;
 import com.nzby.homeshop.Repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -28,7 +29,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Ползователь не найден"));
 
-        // Проверка, подтверждена ли почта
+            // Проверка, подтверждена ли почта
         if (!user.isEnabled()) {
             throw new UsernameNotFoundException("Email не подтвержден.");
         }

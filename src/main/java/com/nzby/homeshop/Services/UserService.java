@@ -25,16 +25,16 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    // Получение текущего аутентифицированного пользователя
-    public User getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal() instanceof String) {
-            return null;
-        }
-        String username = ((UserDetails) authentication.getPrincipal()).getUsername();
-        return userRepository.findByEmail(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Пользователь не найден с email: " + username));
-    }
+   // Получение текущего аутентифицированного пользователя
+   public User getCurrentUser() {
+       Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+       if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal() instanceof String) {
+           return null;
+       }
+       String username = ((UserDetails) authentication.getPrincipal()).getUsername();
+       return userRepository.findByEmail(username)
+               .orElseThrow(() -> new UsernameNotFoundException("Пользователь не найден с email: " + username));
+   }
 
     // Регистрация нового пользователя
     public User registerUser(String email, String password, String name, Role role) {
@@ -107,4 +107,11 @@ public class UserService {
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);
     }
+
+
+//    public User getCurrentUser() {
+//        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+//        return userRepository.findByUsername(username)
+//                .orElseThrow(() -> new RuntimeException("Пользователь с именем " + username + " не найден"));
+//    }
 }
