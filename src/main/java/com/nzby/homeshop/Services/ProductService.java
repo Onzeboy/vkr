@@ -2,7 +2,6 @@ package com.nzby.homeshop.Services;
 
 import com.nzby.homeshop.DTO.CategoryForm;
 import com.nzby.homeshop.POJO.Category;
-import com.nzby.homeshop.POJO.Enum.ProductCategory;
 import com.nzby.homeshop.POJO.Enum.ProductStatus;
 import com.nzby.homeshop.POJO.Product;
 import com.nzby.homeshop.POJO.ProductImage;
@@ -289,43 +288,6 @@ public class ProductService {
         }
     }
 
-    @Transactional
-    public void setupNutritionalInfo(Product product, Integer calories, Double fats, Double proteins,
-                                     Double carbohydrates, String composition) {
-        if (isEdibleCategory(String.valueOf(product.getCategory()))) {
-            product.setCalories(calories != null ? calories : 0);
-            product.setFats(fats != null ? fats : 0.0);
-            product.setProteins(proteins != null ? proteins : 0.0);
-            product.setCarbohydrates(carbohydrates != null ? carbohydrates : 0.0);
-            if (!isWholeProduct(String.valueOf(product.getCategory()))) {
-                product.setComposition(composition != null ? composition : "");
-            } else {
-                product.setComposition(null);
-            }
-        }
-    }
-
-    private boolean isEdibleCategory(String category) {
-        if (category == null) return false;
-        try {
-            ProductCategory pc = ProductCategory.valueOf(category);
-            return pc != ProductCategory.NON_FOOD && pc != ProductCategory.PET_FOOD && pc != ProductCategory.ECO_FRIENDLY;
-        } catch (IllegalArgumentException e) {
-            logger.warn("Invalid ProductCategory value: {}", category, e);
-            return false;
-        }
-    }
-
-    private boolean isWholeProduct(String category) {
-        if (category == null) return false;
-        try {
-            ProductCategory pc = ProductCategory.valueOf(category);
-            return pc == ProductCategory.FRUITS || pc == ProductCategory.VEGETABLES || pc == ProductCategory.HERBS ||
-                    pc == ProductCategory.SPICES || pc == ProductCategory.HEALTH_SUPPLEMENTS;
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-    }
 
     @Transactional(readOnly = true)
     public List<Category> getAllCategories() {

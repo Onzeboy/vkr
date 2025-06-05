@@ -22,11 +22,38 @@ public class Address {
     @Column(name = "city")
     private String city;
 
-    @Column(name = "postal_code")
-    private String postalCode;
 
-    @Column(name = "country")
-    private String country;
+    public Long getId() {
+        return id;
+    }
 
-    // Геттеры и сеттеры
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public String getStreetAddress() {
+        return streetAddress;
+    }
+
+    public void setStreetAddress(String streetAddress) {
+        this.streetAddress = streetAddress;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
 }

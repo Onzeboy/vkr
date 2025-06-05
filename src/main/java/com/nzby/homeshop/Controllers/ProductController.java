@@ -2,6 +2,7 @@ package com.nzby.homeshop.Controllers;
 
 import com.nzby.homeshop.POJO.*;
 import com.nzby.homeshop.Repository.ProductRepository;
+import com.nzby.homeshop.Services.CartService;
 import com.nzby.homeshop.Services.ProductService;
 import com.nzby.homeshop.Services.ReviewService;
 import com.nzby.homeshop.Services.UserService;
@@ -10,6 +11,10 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -32,11 +37,13 @@ public class ProductController {
     private final ProductService productService;
     private final UserService userService;
     private final ReviewService reviewService;
+    private final CartService cartService;
 
-    public ProductController(ProductService productService, UserService userService, ReviewService reviewService) {
+    public ProductController(ProductService productService, UserService userService, ReviewService reviewService, CartService cartService) {
         this.productService = productService;
         this.userService = userService;
         this.reviewService = reviewService;
+        this.cartService = cartService;
     }
 
     @GetMapping("/{id}")
@@ -98,4 +105,56 @@ public class ProductController {
 
         return "product-details";
     }
+    @GetMapping("/reviews/{id}")
+    @Transactional
+    public String showAllReviews(@PathVariable Long id, @RequestParam(defaultValue = "1") int page, Model model) {
+        Product product = productService.findProductById(id);
+        if (product == null) {
+            model.addAttribute("errorMessage", "Продукт не найден");
+            return "all-reviews";
+        }
+
+        // Получаем отсортированные изображения
+        List<ProductImage> sortedImages = productService.getSortedImagesForProduct(id);
+        if (product.getImages() != null) {
+            product.getImages().clear();
+            product.getImages().addAll(sortedImages);
+        } else {
+            product.setImages(sortedImages);
+        }
+        ProductImage primaryImage = productService.getPrimaryImage(sortedImages);
+
+        // Получаем отзывы с пагинацией и сортировкой по voteScore
+        Pageable pageable = PageRequest.of(page - 1, 10, Sort.by("voteScore").descending());
+        Page<Review> reviewPage = reviewService.findByProductIdWithPagination(id, pageable);
+        List<Review> reviews = reviewPage.getContent();
+
+        // Рассчитываем voteScore и userVote
+        Map<Long, Long> voteScores = new HashMap<>();
+        Map<Long, Integer> userVote = new HashMap<>();
+        User user = userService.getCurrentUser();
+        for (Review review : reviews) {
+            voteScores.put(review.getId(), reviewService.getVoteScore(review));
+            if (user != null) {
+                ReviewVote vote = reviewService.findUserVote(review, user);
+                userVote.put(review.getId(), vote != null ? vote.getVote() : null);
+            } else {
+                userVote.put(review.getId(), null);
+            }
+        }
+
+        model.addAttribute("product", product);
+        model.addAttribute("primaryImage", primaryImage);
+        model.addAttribute("categoryFields", product.getCategory() != null ? product.getCategory().getProductFields() : new HashMap<>());
+        model.addAttribute("reviews", reviews);
+        model.addAttribute("voteScores", voteScores);
+        model.addAttribute("userVote", userVote);
+        model.addAttribute("totalReviews", product.getRatingsCount() != null ? product.getRatingsCount() : 0);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", reviewPage.getTotalPages());
+        model.addAttribute("cartCount", cartService.getCartItemsCount(userService.getCurrentUser()));
+
+        return "all-reviews";
+    }
+
 }

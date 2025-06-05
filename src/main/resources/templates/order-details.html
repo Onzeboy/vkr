@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Детали заказа - Premium Store</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        :root {
+            --primary: #333333;
+            --primary-dark: #1a1a1a;
+            --accent: #666666;
+            --danger: #e63946;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --light-gray: #e9ecef;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            background-color: var(--light);
+            overflow-x: hidden;
+        }
+
+        header {
+            background-color: white;
+            padding: 1rem 0;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .logo i {
+            color: var(--accent);
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .header-nav a {
+            text-decoration: none;
+            color: var(--dark);
+            font-weight: 500;
+            position: relative;
+            padding: 0.5rem 0;
+            transition: var(--transition);
+        }
+
+        .header-nav a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--primary);
+            transition: var(--transition);
+        }
+
+        .header-nav a:hover::after {
+            width: 100%;
+        }
+
+        .header-nav a:hover {
+            color: var(--primary);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .header-actions a {
+            text-decoration: none;
+            color: var(--dark);
+            font-weight: 500;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .header-actions a:hover {
+            color: var(--primary);
+        }
+
+        .cart-btn {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .cart-count {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background-color: var(--danger);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+        }
+
+        .main-content {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .order-details-section {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 2rem;
+        }
+
+        .order-details-section h2 {
+            font-size: 1.8rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .order-info {
+            background-color: var(--light-gray);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .order-info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .order-info-label {
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .order-info-value {
+            color: var(--gray);
+        }
+
+        .order-items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .order-items-table th,
+        .order-items-table td {
+            padding: 0.5rem;
+            text-align: left;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .order-items-table th {
+            background-color: var(--light-gray);
+            font-weight: 600;
+        }
+
+        .order-items-table td img {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .order-item-quantity {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
+        .order-item-price {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
+        .order-item-total {
+            font-size: 0.9rem;
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .order-item-action a {
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .order-item-action a:hover {
+            text-decoration: underline;
+        }
+
+        .order-total-price {
+            margin-top: 1rem;
+            text-align: right;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .no-items {
+            color: var(--gray);
+            font-size: 1rem;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        .modal-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90vh;
+            margin-top: 5vh;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .modal-close:hover,
+        .modal-close:focus {
+            color: #bbb;
+            text-decoration: none;
+        }
+
+        @media (max-width: 768px) {
+            .order-items-table th,
+            .order-items-table td {
+                font-size: 0.9rem;
+                padding: 0.3rem;
+            }
+
+            .order-items-table td img {
+                width: 40px;
+                height: 40px;
+            }
+
+            .main-content {
+                padding: 0 1rem;
+            }
+
+            .order-details-section {
+                padding: 1rem;
+            }
+
+            .order-total-price {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div class="header-container">
+        <div class="logo" onclick="window.location.href='/'">
+            <i class="fas fa-store"></i>
+            <span>Premium Store</span>
+        </div>
+        <nav class="header-nav">
+            <a href="/products">Каталог</a>
+            <a href="#">Акции</a>
+            <a href="#">Новинки</a>
+            <a href="#">Доставка</a>
+            <a href="#">Контакты</a>
+        </nav>
+        <div class="header-actions">
+            <a href="/cart" class="cart-btn">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-count" th:text="${cartCount}">0</span>
+            </a>
+        </div>
+    </div>
+</header>
+
+<main class="main-content">
+    <div class="order-details-section">
+        <h2>Детали заказа #<span th:text="${order.id}">1</span></h2>
+        <div class="order-info">
+            <div class="order-info-item">
+                <span class="order-info-label">Дата создания:</span>
+                <span class="order-info-value" th:text="${#temporals.format(order.createdAt, 'dd.MM.yyyy HH:mm')}">04.06.2025 13:39</span>
+            </div>
+            <div class="order-info-item">
+                <span class="order-info-label">Статус:</span>
+                <span class="order-info-value" th:text="${order.status != null ? order.status : 'Неизвестен'}">Статус</span>
+            </div>
+            <div class="order-info-item">
+                <span class="order-info-label">Адрес доставки:</span>
+                <span class="order-info-value" th:text="${order.address.streetAddress + ', ' + order.address.city}">ул. Пример, Город</span>
+            </div>
+            <div class="order-info-item">
+                <span class="order-info-label">Общая сумма:</span>
+                <span class="order-info-value" th:text="'₽ ' + ${#numbers.formatDecimal(order.totalAmount.doubleValue(), 1, 2)}">₽ 0.00</span>
+            </div>
+        </div>
+        <table class="order-items-table" th:if="${order.orderItems != null and !order.orderItems.isEmpty()}">
+            <thead>
+            <tr>
+                <th>Изображение</th>
+                <th>Товар</th>
+                <th>Кол-во</th>
+                <th>Цена за шт.</th>
+                <th>Общая стоимость</th>
+                <th>Действия</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="orderItem : ${order.orderItems}">
+                <td>
+                    <th:block th:if="${orderItem.product?.images != null and !orderItem.product.images.isEmpty()}">
+                        <th:block th:each="image : ${orderItem.product.images}">
+                            <img th:if="${image.isPrimary}"
+                                 th:src="@{'/uploaded-images/' + ${image.filePath}}"
+                                 th:attr="data-modal-src=${'/uploaded-images/' + image.filePath + '?v=1'}"
+                                 class="order-image"
+                                 th:alt="'Фото товара ' + ${orderItem.product.name}">
+                        </th:block>
+                        <th:block th:unless="${orderItem.product.images.?[isPrimary == true].size() > 0}">
+                            <img src="https://via.placeholder.com/200"
+                                 th:attr="data-modal-src='https://via.placeholder.com/200?v=1'"
+                                 class="order-image"
+                                 th:alt="'Нет фото для товара ' + ${orderItem.product.name}">
+                        </th:block>
+                    </th:block>
+                    <th:block th:unless="${orderItem.product?.images != null and !orderItem.product.images.isEmpty()}">
+                        <img src="https://via.placeholder.com/200"
+                             th:attr="data-modal-src='https://via.placeholder.com/200?v=1'"
+                             class="order-image"
+                             th:alt="'Нет изображений для товара ' + ${orderItem.product.name}">
+                    </th:block>
+                </td>
+                <td th:text="${orderItem.product.name}">Название товара</td>
+                <td class="order-item-quantity" th:text="${orderItem.quantity}">1</td>
+                <td class="order-item-price" th:text="'₽ ' + ${orderItem.price != null ? #numbers.formatDecimal(orderItem.price.doubleValue(), 1, 2) : '0.00'}">₽ 0.00</td>
+                <td class="order-item-total" th:text="'₽ ' + ${orderItem.price != null ? #numbers.formatDecimal(orderItem.price.doubleValue() * orderItem.quantity, 1, 2) : '0.00'}">₽ 0.00</td>
+                <td class="order-item-action">
+                    <a th:href="'/products/' + ${orderItem.product.id}">Перейти к товару</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <div class="no-items" th:unless="${order.orderItems != null and !order.orderItems.isEmpty()}">
+            В заказе нет товаров
+        </div>
+        <div class="order-total-price" th:if="${order.orderItems != null and !order.orderItems.isEmpty()}"
+             th:text="'Итого: ₽ ' + ${#numbers.formatDecimal(order.totalAmount.doubleValue(), 1, 2)}">
+            Итого: ₽ 0.00
+        </div>
+    </div>
+
+    <div id="imageModal" class="modal">
+        <span class="modal-close" onclick="closeModal()">×</span>
+        <img class="modal-content" id="modalImage">
+    </div>
+</main>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const orderImages = document.querySelectorAll('.order-image');
+        orderImages.forEach(function(image) {
+            image.addEventListener('click', function(event) {
+                event.preventDefault();
+                const imageSrc = image.getAttribute('data-modal-src');
+                if (imageSrc) {
+                    openModal(imageSrc);
+                }
+            });
+        });
+    });
+
+    function openModal(imageSrc) {
+        const modal = document.getElementById('imageModal');
+        const modalImg = document.getElementById('modalImage');
+        if (modal && modalImg) {
+            modal.style.display = 'block';
+            modalImg.src = imageSrc;
+        }
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('imageModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('imageModal');
+        if (event.target === modal) {
+            closeModal();
+        }
+    };
+</script>
+</body>
+</html>

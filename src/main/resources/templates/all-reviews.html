@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${product.name} + ' - Premium Store'">Товар - Premium Store</title>
+    <title th:text="${product.name} + ' - Все отзывы - Premium Store'">Все отзывы - Premium Store</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <style>
@@ -168,14 +168,12 @@
             color: var(--primary);
             font-weight: 700;
             margin-bottom: 0.5rem;
-            display: inline;
         }
 
         .product-weight {
             font-size: 0.9rem;
             color: var(--gray);
             font-weight: 500;
-            display: inline;
             opacity: 0.7;
         }
 
@@ -236,6 +234,7 @@
             height: 350px;
             object-fit: cover;
             flex-shrink: 0;
+            cursor: pointer;
         }
 
         .carousel-button {
@@ -443,7 +442,7 @@
         }
 
         .reviews-section {
-            margin-top: 2rem;
+            margin-top: 0;
             width: 100%;
         }
 
@@ -542,6 +541,7 @@
             padding: 1.5rem;
             background-color: var(--light-gray);
             border-radius: 12px;
+            margin-bottom: 2rem;
         }
 
         .review-form h4 {
@@ -648,15 +648,21 @@
             background-color: var(--primary-dark);
         }
 
-        .recommended-placeholder {
-            margin-top: 2rem;
-            padding: 1.5rem;
-            background-color: var(--light-gray);
-            border-radius: 12px;
-            text-align: center;
-            color: var(--gray);
-            font-size: 1.1rem;
-            width: 100%;
+        .load-more {
+            display: block;
+            margin: 1.5rem auto;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .load-more:hover {
+            background-color: var(--primary-dark);
         }
 
         .error-message {
@@ -673,30 +679,22 @@
         .review-vote {
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 10px;
             position: absolute;
             bottom: 10px;
             right: 10px;
         }
 
         .vote-button {
-            background-color: var(--light-gray);
-            border: none;
             padding: 5px 10px;
-            border-radius: 5px;
+            border: 1px solid #ccc;
+            background: #fff;
             cursor: pointer;
-            transition: var(--transition);
-            font-size: 1rem;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
-        .vote-button:hover {
-            background-color: var(--gray);
-            color: white;
+        .vote-button.active {
+            background: #e0e0e0;
+            font-weight: bold;
         }
 
         .vote-count {
@@ -821,36 +819,7 @@
             height: auto;
             margin: 5px;
         }
-        .review-vote {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
 
-        .vote-button {
-            padding: 5px 10px;
-            border: 1px solid #ccc;
-            background: #fff;
-            cursor: pointer;
-        }
-
-        .vote-button.active {
-            background: #e0e0e0;
-            font-weight: bold;
-        }
-
-        .vote-count.positive {
-            color: green;
-        }
-
-        .vote-count.negative {
-            color: red;
-        }
-
-        .vote-count.neutral {
-            color: black;
-        }
-        /* Стили для рейтинга на странице продукта */
         .product-page-rating {
             display: flex;
             align-items: center;
@@ -867,7 +836,7 @@
         .product-page-star {
             position: relative;
             display: inline-block;
-            width: 1.2rem; /* Увеличенный размер для страницы продукта */
+            width: 1.2rem;
             height: 1.2rem;
             color: #1a1a1a;
         }
@@ -876,12 +845,12 @@
             position: absolute;
             top: 0;
             left: 0;
-            color: #f1c40f; /* Цвет заполненной звезды (желтый) */
+            color: #f1c40f;
             clip-path: inset(0 calc(100% - (var(--rating) * 100%)) 0 0);
         }
 
         .product-page-star i.fas.fa-star {
-            font-size: 1.2rem; /* Увеличенный размер звезды */
+            font-size: 1.2rem;
         }
 
         .product-page-no-rating {
@@ -889,7 +858,6 @@
             color: var(--gray);
         }
 
-        /* Обеспечиваем согласованность с остальными стилями */
         .product-page-rating span {
             font-size: 1rem;
             color: var(--gray);
@@ -935,7 +903,8 @@
                     <img th:each="image, imageStat : ${product.images}"
                          th:src="@{'/uploaded-images/' + ${image.filePath}}"
                          th:alt="${product.name} + ' | Изображение ' + ${imageStat.index + 1}"
-                         class="carousel-image">
+                         class="carousel-image"
+                         th:data-index="${imageStat.index}">
                 </div>
                 <button class="carousel-button prev" @click="prevSlide" x-show="currentIndex > 0"
                         th:unless="${product.images == null or product.images.isEmpty()}">
@@ -948,15 +917,16 @@
                 <div class="carousel-indicators" th:unless="${product.images == null or product.images.isEmpty()}">
                     <span th:each="image, imageStat : ${product.images}"
                           class="carousel-indicator"
-                          :class="{ 'active': currentIndex === ${imageStat.index} }"
-                          @click="goToSlide(${imageStat.index})"></span>
+                          x-bind:class="{ 'active': currentIndex === parseInt($el.getAttribute('data-index')) }"
+                          x-on:click="goToSlide(parseInt($el.getAttribute('data-index')))"
+                          th:data-index="${imageStat.index}"></span>
                 </div>
             </div>
 
             <div class="product-info">
                 <div class="product-title-price">
                     <div>
-                        <h1 th:text="${product.name}">Название продукта</h1>
+                        <a th:href="@{'/products/' + ${product.id}}" th:text="${product.name}" style="text-decoration: none; color: var(--primary); font-size: 2rem; font-weight: 700;">Название продукта</a>
                         <span class="product-weight" th:text="${product.weightValue != null ? ' ' + product.weightValue + ' ' + product.weightUnit : ''}"></span>
                     </div>
                     <div class="product-brand" th:text="${product.brand != null ? product.brand : ''}"></div>
@@ -968,14 +938,13 @@
                         <span class="product-badge" th:if="${product.status == T(com.nzby.homeshop.POJO.Enum.ProductStatus).FEATURED}">Рекомендуем</span>
                     </div>
                 </div>
-                <!-- Обновленные имена классов для рейтинга -->
                 <div class="product-page-rating" th:data-product-id="${product.id}">
                     <th:block th:if="${product.averageRating != null and product.averageRating > 0}">
                         <div class="product-page-stars-container">
                             <th:block th:each="i : ${#numbers.sequence(1, 5)}">
-                    <span class="product-page-star" th:style="${'--rating: ' + (i <= product.averageRating ? 1 : (i - 1 < product.averageRating ? product.averageRating - (i - 1) : 0))}">
-                        <i class="fas fa-star"></i>
-                    </span>
+                                <span class="product-page-star" th:style="${'--rating: ' + (i <= product.averageRating ? 1 : (i - 1 < product.averageRating ? product.averageRating - (i - 1) : 0))}">
+                                    <i class="fas fa-star"></i>
+                                </span>
                             </th:block>
                         </div>
                         <span th:text="'(' + ${product.ratingsCount != null ? product.ratingsCount : 0} + ')'"></span>
@@ -1001,82 +970,10 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="additional-info">
-            <div th:if="${product.category?.id != null}" class="category-highlight" th:text="${product.category.name}">Птица</div>
-            <div th:if="${product.description != null}">
-                <h3>Описание</h3>
-                <div class="product-info-item" th:text="${product.description}"></div>
-            </div>
-            <div th:if="${product.features != null}">
-                <h3>Характеристики</h3>
-                <div class="product-info-item" th:text="${product.features}"></div>
-            </div>
-            <div th:if="${product.calories != null or product.fats != null or product.proteins != null or product.carbohydrates != null}">
-                <h3>Питательная ценность(100г/)</h3>
-                <div class="product-info-item">
-                    <span th:if="${product.calories != null}" th:text="${product.calories} + ' ккал'"></span>
-                    <span th:if="${product.fats != null}" th:text="', Жиры: ' + ${product.fats} + ' г'"></span>
-                    <span th:if="${product.proteins != null}" th:text="', Белки: ' + ${product.proteins} + ' г'"></span>
-                    <span th:if="${product.carbohydrates != null}" th:text="', Углеводы: ' + ${product.carbohydrates} + ' г'"></span>
-                </div>
-            </div>
-            <div th:if="${product.composition != null}">
-                <h3>Состав</h3>
-                <div class="product-info-item" th:text="${product.composition}">Состав продукта</div>
-            </div>
-        </div>
-
-        <div class="reviews-section" style="width: 100%;" th:data-product-id="${product.id}">
-            <div class="reviews-header">
-                <h3>Отзывы</h3>
-                <span class="average-rating" th:if="${product.averageRating != null and product.ratingsCount > 0}">
-                    Средняя оценка: <span th:text="${#numbers.formatDecimal(product.averageRating, 1, 1)}"></span> (<span th:text="${product.ratingsCount}"></span> отзывов)
-                </span>
-            </div>
-
-            <div class="review-list" th:if="${reviews != null and !reviews.isEmpty()}">
-                <div class="review-item" th:each="review : ${reviews}">
-                    <div class="review-header">
-                        <span class="review-author" th:text="${review.isAnonymous ? 'Аноним' : (review.user != null ? review.user.name : 'Пользователь')}">Аноним</span>
-                        <span class="review-date" th:text="${#temporals.format(review.createdAt, 'dd.MM.yyyy HH:mm')}"></span>
-                    </div>
-                    <div class="review-rating">
-                        <span th:text="'Rating: ' + ${review.rating != null ? review.rating : 'null'}" style="display: none;"></span>
-                        <i class="fas fa-star" th:each="i : ${#numbers.sequence(1, 5)}"
-                           th:classappend="${review.rating != null and review.rating >= i} ? 'selected' : ''"></i>
-                    </div>
-                    <div class="review-comment" th:text="${review.comment}"></div>
-                    <div class="review-images" th:if="${review.images != null and !review.images.isEmpty()}">
-                        <img th:each="image : ${review.images}"
-                             th:src="@{'/uploaded-images/' + ${image.filePath}}"
-                             class="review-image"
-                             th:attr="data-modal-src=${'/uploaded-images/' + image.filePath + '?v=1'}"
-                             th:alt="'Фото отзыва ' + ${review.id}">
-                    </div>
-                    <div class="review-vote">
-                        <button class="vote-button upvote" th:data-review-id="${review.id}"
-                                th:classappend="${userVote[review.id] == 1 ? 'active' : ''}"
-                                onclick="voteReview(${review.id}, 1)">+</button>
-                        <span class="vote-count" th:text="${voteScores[review.id]}"
-                              th:classappend="${voteScores[review.id] > 0 ? 'positive' : voteScores[review.id] < 0 ? 'negative' : 'neutral'}">0</span>
-                        <button class="vote-button downvote" th:data-review-id="${review.id}"
-                                th:classappend="${userVote[review.id] == -1 ? 'active' : ''}"
-                                onclick="voteReview(${review.id}, -1)">-</button>
-                    </div>
-                </div>
-            </div>
-
-            <div id="imageModal" class="modal">
-                <span class="modal-close" onclick="closeModal()">×</span>
-                <img class="modal-content" id="modalImage">
-            </div>
-
-            <div class="no-reviews" th:unless="${reviews != null and !reviews.isEmpty()}">
-                Отзывов пока нет. Будьте первым, кто оставит отзыв!
-            </div>
-
-            <div class="review-form" x-data="{
+    <div class="reviews-section" style="width: 100%;" th:data-product-id="${product.id}" data-current-page="0" th:data-total-reviews="${totalReviews}">
+        <div class="review-form" x-data="{
                 productId: 0,
                 rating: 0,
                 hoverRating: 0,
@@ -1194,91 +1091,111 @@
                     }
                 }
             }">
-                <h4>Оставить отзыв</h4>
-                <div class="rating-input">
-                    <template x-for="i in 5" :key="i">
-                        <span class="rating-star"
-                              :class="{ 'selected': i <= rating || i <= hoverRating }"
-                              @click="setRating(i)"
-                              @mouseover="hoverRating = i"
-                              @mouseout="hoverRating = 0">
-                            <i class="fas fa-star"></i>
-                        </span>
+            <h4>Оставить отзыв</h4>
+            <div class="rating-input">
+                <template x-for="i in 5" :key="i">
+                    <span class="rating-star"
+                          :class="{ 'selected': i <= rating || i <= hoverRating }"
+                          @click="setRating(i)"
+                          @mouseover="hoverRating = i"
+                          @mouseout="hoverRating = 0">
+                        <i class="fas fa-star"></i>
+                    </span>
+                </template>
+            </div>
+            <div x-show="!rating" style="color: #666; font-size: 0.9rem; margin: 5px 0;">
+                Пожалуйста, поставьте оценку
+            </div>
+
+            <textarea class="review-textarea"
+                      x-model="comment"
+                      placeholder="Напишите ваш отзыв..."
+                      @input="validateComment($event.target.value)"></textarea>
+            <div x-show="commentError" style="color: #e63946; font-size: 0.9rem; margin-top: 5px;" x-text="commentError"></div>
+
+            <div style="margin: 10px 0;">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" x-model="isAnonymous">
+                    <span>Оставить отзыв анонимно</span>
+                </label>
+            </div>
+
+            <div class="image-upload">
+                <label>Фотографии (необязательно, до 5 штук):</label>
+                <input type="file" accept="image/*" multiple @change="handleFileUpload($event)">
+                <div class="image-preview" x-ref="imagePreview">
+                    <template x-for="(image, index) in images" :key="index">
+                        <div class="image-preview-item">
+                            <img :src="image.url" alt="Preview">
+                            <button class="remove-image" @click="removeImage(index)">×</button>
+                        </div>
                     </template>
                 </div>
-                <div x-show="!rating" style="color: #666; font-size: 0.9rem; margin: 5px 0;">
-                    Пожалуйста, поставьте оценку
-                </div>
-
-                <textarea class="review-textarea"
-                          x-model="comment"
-                          placeholder="Напишите ваш отзыв..."
-                          @input="validateComment($event.target.value)"></textarea>
-                <div x-show="commentError" style="color: #e63946; font-size: 0.9rem; margin-top: 5px;" x-text="commentError"></div>
-
-                <div style="margin: 10px 0;">
-                    <label style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" x-model="isAnonymous">
-                        <span>Оставить отзыв анонимно</span>
-                    </label>
-                </div>
-
-                <div class="image-upload">
-                    <label>Фотографии (необязательно, до 5 штук):</label>
-                    <input type="file" accept="image/*" multiple @change="handleFileUpload($event)">
-                    <div class="image-preview" x-ref="imagePreview">
-                        <template x-for="(image, index) in images" :key="index">
-                            <div class="image-preview-item">
-                                <img :src="image.url" alt="Preview">
-                                <button class="remove-image" @click="removeImage(index)">×</button>
-                            </div>
-                        </template>
-                    </div>
-                </div>
-                <button class="submit-review"
-                        @click="submitReview()"
-                        :disabled="!isValid"
-                        :style="!isValid ? 'opacity: 0.7;' : ''"
-                        x-text="!rating ? 'Поставьте оценку' : !comment || comment.length < 3 ? 'Напишите отзыв' : 'Отправить отзыв'">
-                </button>
             </div>
+            <button class="submit-review"
+                    @click="submitReview()"
+                    :disabled="!isValid"
+                    :style="!isValid ? 'opacity: 0.7;' : ''"
+                    x-text="!rating ? 'Поставьте оценку' : !comment || comment.length < 3 ? 'Напишите отзыв' : 'Отправить отзыв'">
+            </button>
+        </div>
 
-            <div class="recommended-placeholder">
-                Здесь будут отображаться рекомендованные продукты
+        <div class="reviews-header">
+            <h3>Все отзывы</h3>
+            <span class="average-rating" th:if="${product.averageRating != null and product.ratingsCount > 0}">
+                Средняя оценка: <span th:text="${#numbers.formatDecimal(product.averageRating, 1, 1)}"></span> (<span th:text="${product.ratingsCount}"></span> отзывов)
+            </span>
+        </div>
+        <div class="review-list" id="review-list">
+            <div class="review-item" th:each="review : ${reviews}">
+                <div class="review-header">
+                    <span class="review-author" th:text="${review.isAnonymous ? 'Аноним' : (review.user != null ? review.user.name : 'Пользователь')}">Аноним</span>
+                    <span class="review-date" th:text="${#temporals.format(review.createdAt, 'dd.MM.yyyy HH:mm')}"></span>
+                </div>
+                <div class="review-rating">
+                    <span th:text="'Rating: ' + ${review.rating != null ? review.rating : 'null'}" style="display: none;"></span>
+                    <i class="fas fa-star" th:each="i : ${#numbers.sequence(1, 5)}"
+                       th:classappend="${review.rating != null and review.rating >= i} ? 'selected' : ''"></i>
+                </div>
+                <div class="review-comment" th:text="${review.comment}"></div>
+                <div class="review-images" th:if="${review.images != null and !review.images.isEmpty()}">
+                    <img th:each="image : ${review.images}"
+                         th:src="@{'/uploaded-images/' + ${image.filePath}}"
+                         class="review-image"
+                         th:attr="data-modal-src=${'/uploaded-images/' + image.filePath + '?v=1'}"
+                         th:alt="'Фото отзыва ' + ${review.id}">
+                </div>
+                <div class="review-vote">
+                    <button class="vote-button upvote" th:data-review-id="${review.id}"
+                            th:classappend="${userVote[review.id] == 1 ? 'active' : ''}"
+                            onclick="voteReview(${review.id}, 1)">+</button>
+                    <span class="vote-count" th:text="${voteScores[review.id]}"
+                          th:classappend="${voteScores[review.id] > 0 ? 'positive' : voteScores[review.id] < 0 ? 'negative' : 'neutral'}">0</span>
+                    <button class="vote-button downvote" th:data-review-id="${review.id}"
+                            th:classappend="${userVote[review.id] == -1 ? 'active' : ''}"
+                            onclick="voteReview(${review.id}, -1)">-</button>
+                </div>
             </div>
         </div>
+
+        <div id="imageModal" class="modal">
+            <span class="modal-close" onclick="closeModal()">×</span>
+            <img class="modal-content" id="modalImage">
+        </div>
+
+        <div class="no-reviews" th:unless="${reviews != null and !reviews.isEmpty()}">
+            Отзывов пока нет. Будьте первым, кто оставит отзыв!
+        </div>
+
+        <button class="load-more" id="load-more-btn"
+                th:style="${totalReviews <= 10} ? 'display: none;' : ''"
+                onclick="loadMoreReviews()">
+            Показать еще
+        </button>
     </div>
 </main>
 
-<script>
-    // Функция для модального окна изображений
-    function openModal(imageSrc) {
-        console.log('Открытие модального окна с imageSrc:', imageSrc);
-        const modal = document.getElementById('imageModal');
-        const modalImg = document.getElementById('modalImage');
-        if (modal && modalImg) {
-            modal.style.display = 'block';
-            modalImg.src = imageSrc;
-        } else {
-            console.error('Модальное окно или элемент изображения не найдены');
-        }
-    }
-
-    function closeModal() {
-        const modal = document.getElementById('imageModal');
-        if (modal) {
-            modal.style.display = 'none';
-        }
-    }
-
-    window.onclick = function(event) {
-        const modal = document.getElementById('imageModal');
-        if (event.target === modal) {
-            closeModal();
-        }
-    }
-
-    // Определение carouselData для Alpine.js
+<script defer>
     window.carouselData = function() {
         return {
             currentIndex: 0,
@@ -1325,8 +1242,184 @@
         };
     };
 
+    function openModal(imageSrc) {
+        console.log('Открытие модального окна с imageSrc:', imageSrc);
+        const modal = document.getElementById('imageModal');
+        const modalImg = document.getElementById('modalImage');
+        if (modal && modalImg) {
+            modal.style.display = 'block';
+            modalImg.src = imageSrc;
+        } else {
+            console.error('Модальное окно или элемент изображения не найдены');
+        }
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('imageModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('imageModal');
+        if (event.target === modal) {
+            closeModal();
+        }
+    };
+
+    function voteReview(reviewId, vote) {
+        const button = document.querySelector(`button[data-review-id="${reviewId}"][class*="${vote === 1 ? 'upvote' : 'downvote'}"]`);
+        const isActive = button.classList.contains('active');
+        const voteValue = isActive ? 0 : vote;
+
+        fetch(`/api/reviews/${reviewId}/vote`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `vote=${voteValue}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const voteContainer = button.parentElement;
+                    const voteCountElement = voteContainer.querySelector('.vote-count');
+                    voteCountElement.textContent = data.voteScore;
+                    updateVoteCountStyle(voteCountElement, data.voteScore);
+
+                    const upvoteButton = voteContainer.querySelector('.upvote');
+                    const downvoteButton = voteContainer.querySelector('.downvote');
+                    upvoteButton.classList.toggle('active', data.userVote === 1);
+                    downvoteButton.classList.toggle('active', data.userVote === -1);
+                } else {
+                    alert(data.message || 'Ошибка при голосовании');
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка голосования:', error);
+                alert('Произошла ошибка при голосовании');
+            });
+    }
+
+    function updateVoteCountStyle(element, voteScore) {
+        element.classList.remove('positive', 'neutral', 'negative');
+        if (voteScore > 0) {
+            element.classList.add('positive');
+        } else if (voteScore < 0) {
+            element.classList.add('negative');
+        } else {
+            element.classList.add('neutral');
+        }
+    }
+
+    function loadMoreReviews() {
+        const reviewsSection = document.querySelector('.reviews-section');
+        const reviewList = document.getElementById('review-list');
+        const loadMoreBtn = document.getElementById('load-more-btn');
+        const productId = reviewsSection.getAttribute('data-product-id');
+        let currentPage = parseInt(reviewsSection.getAttribute('data-current-page')) || 0;
+        const totalReviews = parseInt(reviewsSection.getAttribute('data-total-reviews')) || 0;
+        const reviewsPerPage = 10;
+
+        currentPage++;
+        reviewsSection.setAttribute('data-current-page', currentPage);
+
+        fetch(`/api/reviews/product/${productId}?page=${currentPage}&size=${reviewsPerPage}`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Ошибка при загрузке отзывов: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                data.reviews.forEach(review => {
+                    const reviewItem = document.createElement('div');
+                    reviewItem.classList.add('review-item');
+
+                    let reviewHtml = `
+                    <div class="review-header">
+                        <span class="review-author">${review.isAnonymous ? 'Аноним' : (review.user ? review.user.name : 'Пользователь')}</span>
+                        <span class="review-date">${new Date(review.createdAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <div class="review-rating">
+                        <span style="display: none;">Rating: ${review.rating || 'null'}</span>
+                `;
+
+                    for (let i = 1; i <= 5; i++) {
+                        reviewHtml += `<i class="fas fa-star ${review.rating >= i ? 'selected' : ''}"></i>`;
+                    }
+
+                    reviewHtml += `
+                    </div>
+                    <div class="review-comment">${review.comment}</div>
+                `;
+
+                    if (review.images && review.images.length > 0) {
+                        reviewHtml += `<div class="review-images">`;
+                        review.images.forEach(image => {
+                            reviewHtml += `
+                            <img src="/uploaded-images/${image.filePath}"
+                                 class="review-image"
+                                 data-modal-src="/uploaded-images/${image.filePath}?v=1"
+                                 alt="Фото отзыва ${review.id}">
+                        `;
+                        });
+                        reviewHtml += `</div>`;
+                    }
+
+                    reviewHtml += `
+                    <div class="review-vote">
+                        <button class="vote-button upvote" data-review-id="${review.id}"
+                                ${data.userVote[review.id] === 1 ? 'class="active"' : ''}
+                                onclick="voteReview(${review.id}, 1)">+</button>
+                        <span class="vote-count ${data.voteScores[review.id] > 0 ? 'positive' : data.voteScores[review.id] < 0 ? 'negative' : 'neutral'}">
+                            ${data.voteScores[review.id] || 0}
+                        </span>
+                        <button class="vote-button downvote" data-review-id="${review.id}"
+                                ${data.userVote[review.id] === -1 ? 'class="active"' : ''}
+                                onclick="voteReview(${review.id}, -1)">-</button>
+                    </div>
+                `;
+
+                    reviewItem.innerHTML = reviewHtml;
+                    reviewList.appendChild(reviewItem);
+
+                    const newImages = reviewItem.querySelectorAll('.review-image');
+                    newImages.forEach(image => {
+                        image.addEventListener('click', function() {
+                            const imageSrc = image.getAttribute('data-modal-src');
+                            if (imageSrc) {
+                                openModal(imageSrc);
+                            }
+                        });
+                    });
+
+                    const newVoteButtons = reviewItem.querySelectorAll('.vote-button');
+                    newVoteButtons.forEach(button => {
+                        button.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            const reviewId = this.getAttribute('data-review-id');
+                            const vote = this.classList.contains('upvote') ? 1 : -1;
+                            voteReview(reviewId, vote);
+                        });
+                    });
+                });
+
+                const loadedReviews = (currentPage + 1) * reviewsPerPage;
+                if (loadedReviews >= data.totalElements) {
+                    loadMoreBtn.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при загрузке отзывов:', error);
+                alert('Не удалось загрузить отзывы: ' + error.message);
+                reviewsSection.setAttribute('data-current-page', currentPage - 1);
+            });
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
-        // Обработка кликов по изображениям отзывов
         const reviewImages = document.querySelectorAll('.review-image');
         reviewImages.forEach(function(image) {
             image.addEventListener('click', function() {
@@ -1339,66 +1432,24 @@
             });
         });
 
-        // Обработка голосования за отзывы
         const voteButtons = document.querySelectorAll('.vote-button');
         voteButtons.forEach(button => {
             button.addEventListener('click', function(e) {
                 e.preventDefault();
                 const reviewId = this.getAttribute('data-review-id');
                 const vote = this.classList.contains('upvote') ? 1 : -1;
-                const isActive = this.classList.contains('active');
-                const voteValue = isActive ? 0 : vote;
-
-                fetch(`/api/reviews/${reviewId}/vote`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: `vote=${voteValue}`
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            const voteContainer = this.parentElement;
-                            const voteCountElement = voteContainer.querySelector('.vote-count');
-                            voteCountElement.textContent = data.voteScore;
-                            updateVoteCountStyle(voteCountElement, data.voteScore);
-
-                            const upvoteButton = voteContainer.querySelector('.upvote');
-                            const downvoteButton = voteContainer.querySelector('.downvote');
-                            upvoteButton.classList.toggle('active', data.userVote === 1);
-                            downvoteButton.classList.toggle('active', data.userVote === -1);
-                        } else {
-                            alert(data.message || 'Ошибка при голосовании');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Ошибка голосования:', error);
-                        alert('Произошла ошибка при голосовании');
-                    });
+                voteReview(reviewId, vote);
             });
         });
 
-        function updateVoteCountStyle(element, voteScore) {
-            element.classList.remove('positive', 'neutral', 'negative');
-            if (voteScore > 0) {
-                element.classList.add('positive');
-            } else if (voteScore < 0) {
-                element.classList.add('negative');
-            } else {
-                element.classList.add('neutral');
-            }
-        }
-
-        // Функциональность корзины
         const MAX_QUANTITY = 10;
         const cartButtons = document.querySelectorAll('.add-to-cart');
         const cartCount = document.querySelector('.cart-count');
+        const wishlistButtons = document.querySelectorAll('.wishlist-btn');
 
         let cartItems = [];
         let stockQuantities = {};
 
-        // Инициализация данных корзины и остатков
         async function initializeCart() {
             try {
                 const cartResponse = await fetch('/api/cart/items', {
@@ -1429,7 +1480,6 @@
             }
         }
 
-        // Инициализация кнопок корзины
         async function initializeCartButtons() {
             await initializeCart();
             cartButtons.forEach(button => {
@@ -1453,7 +1503,6 @@
 
         initializeCartButtons();
 
-        // Обработка кликов по кнопке "В корзину"
         cartButtons.forEach(button => {
             button.addEventListener('click', async function(e) {
                 e.preventDefault();
@@ -1491,12 +1540,34 @@
             });
         });
 
-        // Обработка изменения количества
         document.addEventListener('click', async function(e) {
-            const target = e.target.closest('.cart-minus') || e.target.closest('.cart-plus');
+            const target = e.target.closest('.cart-minus') || e.target.closest('.cart-plus') || e.target.closest('.wishlist-btn');
             if (!target) return;
             e.preventDefault();
             e.stopPropagation();
+
+            if (target.classList.contains('wishlist-btn')) {
+                const productId = target.closest('.product-actions').querySelector('.add-to-cart').getAttribute('data-product-id');
+                const isActive = target.classList.contains('active');
+
+                try {
+                    const response = await fetch(`/api/wishlist/${productId}`, {
+                        method: isActive ? 'DELETE' : 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    if (response.ok) {
+                        target.classList.toggle('active', !isActive);
+                    } else {
+                        const errorText = await response.text();
+                        alert(errorText || 'Ошибка при обновлении списка желаний');
+                    }
+                } catch (error) {
+                    console.error('Ошибка при обновлении списка желаний:', error);
+                    alert('Произошла ошибка при обновлении списка желаний');
+                }
+                return;
+            }
 
             const button = target.closest('.add-to-cart');
             const quantityEl = button.querySelector('.cart-quantity');

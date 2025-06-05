@@ -105,7 +105,6 @@ public class ProductCRUDController {
         }
 
         productService.setupTags(product, tags);
-        productService.setupNutritionalInfo(product, calories, fats, proteins, carbohydrates, composition);
 
         if (selectedCategoryId != null) {
             Category category = productService.findCategoryById(selectedCategoryId);
@@ -286,7 +285,6 @@ public class ProductCRUDController {
 
         // Обработка тегов и питательной информации
         productService.setupTags(product, tags);
-        productService.setupNutritionalInfo(product, calories, fats, proteins, carbohydrates, composition);
 
         // Проверка полей категории
         if (selectedCategoryId != null) {

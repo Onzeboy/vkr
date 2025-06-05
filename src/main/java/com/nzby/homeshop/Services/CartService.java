@@ -3,7 +3,9 @@ package com.nzby.homeshop.Services;
 import com.nzby.homeshop.POJO.CartItem;
 import com.nzby.homeshop.POJO.Product;
 import com.nzby.homeshop.POJO.User;
+import com.nzby.homeshop.POJO.Enum.ProductStatus;
 import com.nzby.homeshop.Repository.CartItemRepository;
+import com.nzby.homeshop.Repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,12 +14,16 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class CartService {
 
     @Autowired
     private CartItemRepository cartItemRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
 
     @Transactional
     public CartItem addToCart(User user, Product product, int quantity) {
@@ -31,9 +37,12 @@ public class CartService {
             throw new IllegalArgumentException("Количество должно быть больше 0");
         }
 
-        // Проверка максимального количества (10 штук)
         if (quantity > 10) {
             throw new IllegalArgumentException("Максимальное количество одного товара в корзине — 10 штук.");
+        }
+
+        if (quantity > product.getStock()) {
+            throw new IllegalArgumentException("На складе недостаточно товара. Доступно: " + product.getStock());
         }
 
         Optional<CartItem> existingItem = cartItemRepository.findByUserAndProduct(user, product);
@@ -45,30 +54,54 @@ public class CartService {
                 throw new IllegalArgumentException("Максимальное количество одного товара в корзине — 10 штук.");
             }
             item.setQuantity(newQuantity);
+            item.setUpdatedAt(LocalDateTime.now());
             return cartItemRepository.save(item);
         } else {
             CartItem newItem = new CartItem(user, product, quantity);
+            newItem.setUnitPrice(product.getPrice());
+            newItem.setAddedAt(LocalDateTime.now());
+            newItem.setOrdered(false);
             return cartItemRepository.save(newItem);
         }
     }
 
     @Transactional
-    public CartItem updateQuantity(Long cartItemId, int quantity) {
-        CartItem item = cartItemRepository.findById(cartItemId)
-                .orElseThrow(() -> new RuntimeException("Товар в корзине не найден"));
+    public void updateCartItem(CartItem cartItem, Integer quantityChange) {
+        int newQuantity = cartItem.getQuantity() + quantityChange;
+        Product product = cartItem.getProduct();
 
-        if (quantity <= 0) {
-            cartItemRepository.delete(item);
-            return null;
+        if (newQuantity < 0) {
+            throw new IllegalStateException("Количество не может быть отрицательным");
         }
-
-        // Проверка максимального количества (10 штук)
-        if (quantity > 10) {
+        if (newQuantity == 0) {
+            cartItemRepository.delete(cartItem);
+            updateProductStock(product, product.getStock() - quantityChange);
+            return;
+        }
+        if (newQuantity > 10) {
             throw new IllegalStateException("Максимальное количество одного товара в корзине — 10 штук.");
         }
 
-        item.setQuantity(quantity);
-        return cartItemRepository.save(item);
+        if (newQuantity > product.getStock()) {
+            throw new IllegalStateException("На складе недостаточно товара. Доступно: " + product.getStock());
+        }
+
+        cartItem.setQuantity(newQuantity);
+        cartItem.setUpdatedAt(LocalDateTime.now());
+        cartItemRepository.save(cartItem);
+        updateProductStock(product, product.getStock() - quantityChange);
+    }
+
+    @Transactional
+    private void updateProductStock(Product product, int newStock) {
+        product.setStock(newStock);
+        if (newStock <= 0) {
+            product.setStatus(ProductStatus.OUT_OF_STOCK);
+        } else if (product.getStatus() == ProductStatus.OUT_OF_STOCK) {
+            // Reset status to a default if stock is replenished
+            product.setStatus(ProductStatus.NEW);
+        }
+        productRepository.save(product);
     }
 
     public List<CartItem> getCartItems(User user) {
@@ -80,7 +113,12 @@ public class CartService {
 
     @Transactional
     public void removeFromCart(Long cartItemId) {
+        CartItem cartItem = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new RuntimeException("Элемент корзины не найден"));
+        Product product = cartItem.getProduct();
+        int quantity = cartItem.getQuantity();
         cartItemRepository.deleteById(cartItemId);
+        updateProductStock(product, product.getStock() + quantity);
     }
 
     public int getCartItemsCount(User user) {
@@ -91,51 +129,42 @@ public class CartService {
     }
 
     public List<CartItem> getCartItemsByUser(User user) {
-        return cartItemRepository.findByUser(user);
+        return cartItemRepository.findByUserAndIsOrdered(user, false);
     }
 
-    // Получение товара из корзины по ID
     public CartItem getCartItemById(Long itemId) {
-        Optional<CartItem> cartItem = cartItemRepository.findById(itemId);
-        return cartItem.orElse(null); // Возвращаем null, если товар не найден
+        return cartItemRepository.findById(itemId)
+                .orElseThrow(() -> new RuntimeException("Элемент корзины не найден"));
     }
 
-    // Обновление товара в корзине (для совместимости с CartController)
     @Transactional
-    public void updateCartItem(CartItem cartItem, Integer quantityChange) {
-        int newQuantity = cartItem.getQuantity() + quantityChange;
-        if (newQuantity > 10) {
-            throw new IllegalStateException("Максимальное количество одного товара в корзине — 10 штук.");
-        }
-        if (newQuantity <= 0) {
-            cartItemRepository.delete(cartItem);
-        } else {
-            cartItem.setQuantity(newQuantity);
-            cartItemRepository.save(cartItem);
-        }
-    }
-
-    // Удаление товара из корзины
     public void removeCartItem(CartItem cartItem) {
+        Product product = cartItem.getProduct();
+        int quantity = cartItem.getQuantity();
         cartItemRepository.delete(cartItem);
+        updateProductStock(product, product.getStock() + quantity);
     }
 
-    public void checkout(User user) {
+    @Transactional
+    public void checkout(User user, List<Long> selectedItemIds) {
         List<CartItem> cartItems = getCartItemsByUser(user);
+        List<CartItem> selectedItems = cartItems.stream()
+                .filter(item -> selectedItemIds.contains(item.getId()))
+                .collect(Collectors.toList());
 
-        // Преобразование и суммирование веса в кг
-        BigDecimal totalWeightInKg = cartItems.stream()
+        BigDecimal totalWeightInKg = selectedItems.stream()
                 .map(item -> convertToKg(item.getProduct().getWeightValue(), item.getProduct().getWeightUnit())
                         .multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Проверка лимита 20 кг
-        if (totalWeightInKg.compareTo(new BigDecimal("20.0")) > 0) {
-            throw new IllegalStateException("Общий вес заказа превышает 20 кг. Максимальный вес: 20 кг, текущий вес: " + totalWeightInKg + " кг");
+        if (totalWeightInKg.compareTo(new BigDecimal("10.0")) > 0) {
+            throw new IllegalStateException("Общий вес заказа превышает 10 кг. Максимальный вес: 10 кг, текущий вес: " + totalWeightInKg + " кг");
         }
 
-        // Оформление заказа, если вес в пределах лимита
-        for (CartItem item : cartItems) {
+        for (CartItem item : selectedItems) {
+            Product product = item.getProduct();
+            int newStock = product.getStock() - item.getQuantity();
+            updateProductStock(product, newStock);
             item.setOrdered(true);
             cartItemRepository.save(item);
         }
@@ -161,8 +190,43 @@ public class CartService {
         }
     }
 
+    public BigDecimal calculateSelectedTotalPrice(List<CartItem> cartItems, List<Long> selectedItemIds) {
+        return cartItems.stream()
+                .filter(item -> selectedItemIds.contains(item.getId()))
+                .map(CartItem::getTotalPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public BigDecimal calculateSelectedTotalWeight(List<CartItem> cartItems, List<Long> selectedItemIds) {
+        return cartItems.stream()
+                .filter(item -> selectedItemIds.contains(item.getId()))
+                .map(item -> convertToKg(item.getProduct().getWeightValue(), item.getProduct().getWeightUnit())
+                        .multiply(BigDecimal.valueOf(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public boolean isWeightLimitExceeded(List<CartItem> cartItems, List<Long> selectedItemIds) {
+        BigDecimal totalWeight = calculateSelectedTotalWeight(cartItems, selectedItemIds);
+        return totalWeight.compareTo(BigDecimal.valueOf(10)) > 0;
+    }
+
     public CartItem findCartItemByUserAndProduct(User user, Product product) {
         return cartItemRepository.findByUserAndProduct(user, product)
-                .orElseThrow(() -> new RuntimeException("Продукты не найдены" + product));
+                .orElseThrow(() -> new RuntimeException("Продукт не найден: " + product));
+    }
+
+    public int getProductStock(Long productId) {
+        return productRepository.findById(productId)
+                .map(Product::getStock)
+                .orElse(0);
+    }
+
+    public void updateCartItemSelection(CartItem cartItem, Boolean isSelected) {
+        cartItem.setOrdered(isSelected);
+        cartItemRepository.save(cartItem);
+    }
+
+    public List<CartItem> getCartItemsByUserAndOrdered(User user, boolean isOrdered) {
+        return cartItemRepository.findByUserAndIsOrdered(user, isOrdered);
     }
 }

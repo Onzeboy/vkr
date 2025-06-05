@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Premium Store - Оформление заказа</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #333333;
+      --primary-dark: #1a1a1a;
+      --accent: #666666;
+      --danger: #e63946;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --gray: #6c757d;
+      --light-gray: #e9ecef;
+      --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --transition: all 0.3s ease;
+      --success: #28a745;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: var(--dark);
+      background-color: var(--light);
+    }
+
+    header {
+      background-color: white;
+      padding: 1rem 0;
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .header-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 2rem;
+    }
+
+    .logo {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
+    }
+
+    .logo i {
+      color: var(--accent);
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 2rem;
+    }
+
+    .header-nav a {
+      text-decoration: none;
+      color: var(--dark);
+      font-weight: 500;
+      position: relative;
+      padding: 0.5rem 0;
+      transition: var(--transition);
+    }
+
+    .header-nav a::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background-color: var(--primary);
+      transition: var(--transition);
+    }
+
+    .header-nav a:hover::after {
+      width: 100%;
+    }
+
+    .header-nav a:hover {
+      color: var(--primary);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+    }
+
+    .header-actions a {
+      text-decoration: none;
+      color: var(--dark);
+      font-weight: 500;
+      transition: var(--transition);
+    }
+
+    .header-actions a:hover {
+      color: var(--primary);
+    }
+
+    .cart-btn {
+      position: relative;
+    }
+
+    .cart-count {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background-color: var(--danger);
+      color: white;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+    }
+
+    .checkout-container {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 2rem;
+    }
+
+    .checkout-title {
+      font-size: 2rem;
+      margin-bottom: 2rem;
+      color: var(--primary);
+    }
+
+    .checkout-content {
+      background-color: white;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      padding: 1.5rem;
+    }
+
+    .modal-label {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--gray);
+      margin-bottom: 0.5rem;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--light-gray);
+      border-radius: 6px;
+      font-size: 1rem;
+      transition: var(--transition);
+    }
+
+    .modal-input:focus {
+      border-color: var(--primary);
+      outline: none;
+      box-shadow: 0 0 5px rgba(51, 51, 51, 0.2);
+    }
+
+    .modal-select {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--light-gray);
+      border-radius: 6px;
+      font-size: 1rem;
+      transition: var(--transition);
+    }
+
+    .modal-select:focus {
+      border-color: var(--primary);
+      outline: none;
+      box-shadow: 0 0 5px rgba(51, 51, 51, 0.2);
+    }
+
+    .suggestions {
+      background: white;
+      border: 1px solid var(--light-gray);
+      max-height: 150px;
+      overflow-y: auto;
+      width: 100%;
+      z-index: 1001;
+      position: absolute;
+    }
+
+    .suggestion-item {
+      padding: 5px;
+      cursor: pointer;
+    }
+
+    .suggestion-item:hover {
+      background-color: var(--light-gray);
+    }
+
+    #map {
+      width: 100%;
+      height: 200px;
+      margin-top: 10px;
+      opacity: 0.8;
+    }
+
+    .checkout-btn {
+      width: 100%;
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 1rem;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      margin-top: 1rem;
+    }
+
+    .checkout-btn:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .cancel-btn {
+      width: 100%;
+      background-color: var(--light-gray);
+      color: var(--dark);
+      border: none;
+      padding: 1rem;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      margin-top: 0.5rem;
+    }
+
+    .cancel-btn:hover {
+      background-color: var(--gray);
+      color: white;
+    }
+
+    .alert {
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .alert-danger {
+      background-color: var(--danger);
+      color: white;
+    }
+
+    .previous-addresses {
+      margin-bottom: 1rem;
+    }
+
+    .address-item {
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      border: 1px solid var(--light-gray);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .address-item:hover {
+      background-color: var(--light-gray);
+      border-color: var(--primary);
+    }
+
+    .address-item i {
+      color: var(--accent);
+    }
+
+    @media (max-width: 768px) {
+      .header-container {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+      }
+
+      .header-nav {
+        gap: 1rem;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .checkout-content {
+        padding: 1rem;
+      }
+    }
+  </style>
+  <script src="https://api-maps.yandex.ru/2.1/?apikey=21b68bf3-c48c-4db1-b905-2733ce2570ef&suggest_apikey=987b9e40-f105-46fd-bc04-71f35a71b06d&lang=ru_RU" type="text/javascript"></script>
+</head>
+<body>
+<header>
+  <div class="header-container">
+    <a href="/" class="logo">
+      <i class="fas fa-store"></i>
+      <span>Premium Store</span>
+    </a>
+    <nav class="header-nav">
+      <a href="/products">Каталог</a>
+      <a href="#">Акции</a>
+      <a href="#">Новинки</a>
+      <a href="#">Доставка</a>
+      <a href="#">Контакты</a>
+    </nav>
+    <div class="header-actions">
+      <a th:href="@{/auth/login}" th:if="${!isAuthenticated}">
+        <i class="fas fa-user"></i> Войти
+      </a>
+      <a th:href="@{/auth/logout}" th:if="${isAuthenticated}">
+        <i class="fas fa-sign-out-alt"></i> Выйти
+      </a>
+      <a href="/cart" class="cart-btn">
+        <i class="fas fa-shopping-cart"></i>
+        <span class="cart-count" th:text="${cartCount}">0</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main class="checkout-container">
+  <h1 class="checkout-title">Оформление заказа</h1>
+
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+  <div class="checkout-content">
+    <form id="orderSubmissionForm" th:action="@{/orders/create}" method="post">
+      <label><input type="hidden" name="selectedItems" th:value="${selectedItemIds}"></label>
+      <input type="hidden" name="shippingMethod" value="Доставка">
+      <label><input type="hidden" name="city" id="hiddenCity" value="Муром"></label>
+      <label><input type="hidden" name="streetAddress" id="hiddenStreetAddress" value=""></label>
+
+      <!-- Блок с последними адресами -->
+      <div class="modal-input-group" th:if="${not #lists.isEmpty(userAddresses)}">
+        <label class="modal-label">Ваши последние адреса:</label>
+        <div class="previous-addresses">
+          <div class="address-item" th:each="address,iter : ${userAddresses}"
+               th:if="${iter.index < 3}"
+               th:attr="data-address=${address.streetAddress}"
+               th:text="${address.streetAddress}"></div>
+        </div>
+      </div>
+
+      <!-- Основное поле для адреса -->
+      <div class="modal-input-group">
+        <label class="modal-label" for="address-input">Адрес доставки в Муроме:</label>
+        <input type="text" id="address-input" class="modal-input"
+               placeholder="Введите улицу и номер дома" required>
+        <div id="suggestions" class="suggestions"></div>
+        <div id="map"></div>
+      </div>
+
+      <!-- Способ оплаты -->
+      <div class="modal-input-group">
+        <label class="modal-label" for="paymentMethod">Способ оплаты:</label>
+        <select id="paymentMethod" name="paymentMethod" class="modal-select" required>
+          <option value="cash">Наличными</option>
+          <option value="card">Картой</option>
+        </select>
+      </div>
+
+      <button type="submit" class="checkout-btn" id="submitBtn">Подтвердить заказ</button>
+      <a href="/cart" class="cancel-btn">Вернуться в корзину</a>
+    </form>
+  </div>
+</main>
+
+<script>
+  //<![CDATA[
+  document.addEventListener('DOMContentLoaded', function() {
+    const addressInput = document.getElementById('address-input');
+    const hiddenStreetAddress = document.getElementById('hiddenStreetAddress');
+    const hiddenCity = document.getElementById('hiddenCity');
+    const suggestionsDiv = document.getElementById('suggestions');
+    const mapContainer = document.getElementById('map');
+    const submitBtn = document.getElementById('submitBtn');
+    const addressItems = document.querySelectorAll('.address-item');
+
+    let selectedSuggestion = null;
+    const muromBounds = ([55.5295, 41.9655], [55.6235, 42.1397]);
+
+    // Функция выбора адреса
+    function selectAddress(element) {
+      const address = element.getAttribute('data-address');
+      addressInput.value = address;
+      hiddenStreetAddress.value = address;
+      hiddenCity.value = 'Муром';
+
+      // Обновляем карту
+      if (window.ymaps && window.map) {
+        ymaps.geocode('Муром, ' + address).then(function(res) {
+          const firstGeoObject = res.geoObjects.get(0);
+          if (firstGeoObject) {
+            const coords = firstGeoObject.geometry.getCoordinates();
+            if (window.placemark) {
+              window.map.geoObjects.remove(window.placemark);
+            }
+            window.placemark = new ymaps.Placemark(coords);
+            window.map.geoObjects.add(window.placemark);
+            window.map.setCenter(coords, 17);
+          }
+        }).catch(function(err) {
+          console.error('Ошибка геокодирования при выборе адреса:', err);
+        });
+      }
+    }
+
+    // Привязываем событие клика к элементам адресов
+    addressItems.forEach(item => {
+      item.addEventListener('click', function() {
+        selectAddress(this);
+      });
+    });
+
+    ymaps.ready(function() {
+      window.map = new ymaps.Map('map', {
+        center: [55.5765, 42.0526],
+        zoom: 13
+      });
+      window.placemark = null;
+
+      // Показ подсказок с ограничением по Мурому
+      addressInput.addEventListener('input', function() {
+        const query = addressInput.value.trim();
+        if (query.length < 2) {
+          suggestionsDiv.innerHTML = '';
+          return;
+        }
+
+        ymaps.suggest('Муром, ' + query, {
+          boundedBy: muromBounds,
+          strictBounds: true
+        }).then(function(suggestions) {
+          suggestionsDiv.innerHTML = '';
+          suggestions = suggestions.filter(s =>
+                  s.value.toLowerCase().includes('муром') ||
+                  s.value.toLowerCase().includes('владимирская обл')
+          );
+
+          if (suggestions.length === 0) {
+            suggestionsDiv.innerHTML = '<div class="suggestion-item">Адрес не найден в Муроме</div>';
+            return;
+          }
+
+          suggestions.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'suggestion-item';
+            div.textContent = item.value;
+            div.onclick = () => {
+              selectedSuggestion = item;
+              addressInput.value = item.value;
+              suggestionsDiv.innerHTML = '';
+
+              // Извлекаем только улицу и дом
+              const addressParts = item.value.split(', ');
+              let streetAddress = addressParts.slice(1).join(', ')
+                      .replace(/муром,?/i, '')
+                      .replace(/владимирская обл,?/i, '')
+                      .trim();
+
+              hiddenStreetAddress.value = streetAddress;
+              hiddenCity.value = 'Муром';
+
+              // Показываем на карте
+              ymaps.geocode(item.value).then(function(res) {
+                const firstGeoObject = res.geoObjects.get(0);
+                if (firstGeoObject) {
+                  const coords = firstGeoObject.geometry.getCoordinates();
+                  if (window.placemark) {
+                    window.map.geoObjects.remove(window.placemark);
+                  }
+                  window.placemark = new ymaps.Placemark(coords);
+                  window.map.geoObjects.add(window.placemark);
+                  window.map.setCenter(coords, 17);
+                }
+              }).catch(function(err) {
+                console.error('Ошибка геокодирования:', err);
+              });
+            };
+            suggestionsDiv.appendChild(div);
+          });
+        }).catch(function(err) {
+          console.error('Ошибка получения подсказок:', err);
+        });
+      });
+
+      // Обработка отправки формы
+      document.getElementById('orderSubmissionForm').onsubmit = function(e) {
+        if (!hiddenStreetAddress.value) {
+          e.preventDefault();
+          alert('Пожалуйста, укажите адрес доставки');
+        }
+      };
+    }).catch(function(err) {
+      console.error('Ошибка инициализации Яндекс.Карт:', err);
+    });
+  });
+  //]]>
+</script>
+</body>
+</html>

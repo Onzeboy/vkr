@@ -3,6 +3,8 @@ package com.nzby.homeshop.Services;
 import com.nzby.homeshop.POJO.*;
 import com.nzby.homeshop.Repository.*;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -282,5 +283,8 @@ public class ReviewService {
                 reviewVoteRepository.save(newVote);
             }
         }
+    }
+    public Page<Review> findByProductIdWithPagination(Long productId, Pageable pageable) {
+        return reviewRepository.findByProductIdOrderByVoteScoreDesc(productId, pageable);
     }
 }

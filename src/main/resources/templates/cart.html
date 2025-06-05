@@ -134,7 +134,6 @@
             font-size: 0.7rem;
         }
 
-        /* Стили для корзины */
         .cart-container {
             max-width: 1200px;
             margin: 2rem auto;
@@ -160,7 +159,7 @@
 
         .cart-item {
             display: grid;
-            grid-template-columns: 100px 1fr auto auto;
+            grid-template-columns: 30px 100px 1fr auto auto;
             gap: 1.5rem;
             padding: 1rem 0;
             border-bottom: 1px solid var(--light-gray);
@@ -169,6 +168,10 @@
 
         .cart-item:last-child {
             border-bottom: none;
+        }
+
+        .cart-item-checkbox {
+            cursor: pointer;
         }
 
         .cart-item-image-link {
@@ -180,12 +183,12 @@
             border-radius: 8px;
             aspect-ratio: 1/1;
             object-fit: cover;
-            transition: var(--transition);
+            transition: transform var(--transition);
         }
 
         .cart-item-image:hover {
-            opacity: 0.8;
             transform: scale(1.05);
+            opacity: 0.8;
         }
 
         .cart-item-info {
@@ -209,7 +212,7 @@
             margin-left: 0.5rem;
         }
 
-        .cart-item-brand {
+        .cart-brand {
             font-size: 0.9rem;
             color: var(--gray);
             opacity: 0.7;
@@ -221,7 +224,14 @@
             font-weight: 500;
         }
 
-        .cart-item-controls {
+        .original-price {
+            font-size: 0.9rem;
+            color: var(--gray);
+            text-decoration: line-through;
+            margin-right: 0.5rem;
+        }
+
+        .cart-controls {
             display: flex;
             align-items: center;
             gap: 0.5rem;
@@ -367,7 +377,6 @@
             color: white;
         }
 
-        /* Модальное окно */
         .modal {
             display: none;
             position: fixed;
@@ -379,20 +388,35 @@
             z-index: 1001;
             justify-content: center;
             align-items: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         .modal-content {
             background-color: white;
             padding: 2rem;
-            border-radius: 8px;
-            max-width: 400px;
+            border-radius: 12px;
+            max-width: 500px;
             width: 90%;
-            text-align: center;
+            box-shadow: var(--shadow);
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
 
         .modal-title {
-            font-size: 1.2rem;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
             margin-bottom: 1.5rem;
+            text-align: center;
         }
 
         .modal-buttons {
@@ -403,21 +427,44 @@
         }
 
         .modal-btn {
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            border: none;
+            font-size: 1rem;
+            font-weight: 500;
             cursor: pointer;
             transition: var(--transition);
         }
 
         .modal-btn-confirm {
-            background-color: var(--danger);
+            background-color: var(--primary);
             color: white;
-            border: none;
+        }
+
+        .modal-btn-confirm:hover {
+            background-color: var(--primary-dark);
         }
 
         .modal-btn-cancel {
             background-color: var(--light-gray);
-            border: none;
+            color: var(--dark);
+        }
+
+        .modal-btn-cancel:hover {
+            background-color: var(--gray);
+            color: white;
+        }
+
+        .alert {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .alert-danger {
+            background-color: var(--danger);
+            color: white;
         }
 
         @media (max-width: 768px) {
@@ -434,12 +481,12 @@
             }
 
             .cart-item {
-                grid-template-columns: 80px 1fr;
+                grid-template-columns: 30px 80px 1fr;
                 grid-template-rows: auto auto;
                 gap: 1rem;
             }
 
-            .cart-item-controls {
+            .cart-controls {
                 grid-column: 1 / -1;
                 justify-content: flex-end;
             }
@@ -484,71 +531,89 @@
 <main class="cart-container">
     <h1 class="cart-title">Ваша корзина</h1>
 
+    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
     <div th:if="${cartItems != null and !cartItems.isEmpty()}" class="cart-content">
-        <div class="cart-items">
-            <div th:each="item : ${cartItems}" class="cart-item" th:data-item-id="${item.id}">
-                <a th:href="@{/products/{id}(id=${item.product.id})}" class="cart-item-image-link">
-                    <img th:src="${item.product.images != null and !item.product.images.isEmpty() ?
-                            '/uploaded-images/' + (item.product.images.?[isPrimary == true].size() > 0 ?
-                            item.product.images.?[isPrimary == true][0].filePath :
-                            item.product.images[0].filePath) :
-                            'https://via.placeholder.com/100'}"
-                         th:alt="${item.product.name}"
-                         class="cart-item-image">
-                </a>
-
-                <div class="cart-item-info">
-                    <div>
-                        <h3 class="cart-item-title" th:text="${item.product.name}"></h3>
-                        <span class="cart-item-weight"
-                              th:text="${item.product.weightValue != null ? item.product.weightValue.intValue() + ' ' + item.product.weightUnit : ''}"></span>
+        <form id="cartForm" th:action="@{/cart}" method="get">
+            <div class="cart-items">
+                <div th:each="item : ${cartItems}" class="cart-item"
+                     th:data-item-id="${item.id}"
+                     th:data-product-id="${item.product.id}"
+                     th:data-stock="${item.product.stock != null ? item.product.stock : 0}"
+                     th:style="${!item.ordered} ? 'background-color: #f8f9fa; opacity: 0.7;' : ''">
+                    <input type="checkbox" class="cart-item-checkbox" name="selectedItems"
+                           th:value="${item.id}"
+                           th:checked="${item.ordered}"
+                           th:data-item-id="${item.id}"
+                           onchange="updateSelection(this)">
+                    <a th:href="@{/products/{id}(id=${item.product.id})}" class="cart-item-image-link">
+                        <img th:src="${item.product.images != null and !item.product.images.isEmpty() ?
+                                      '/uploaded-images/' + (item.product.images.?[isPrimary == true].size() > 0 ?
+                                      item.product.images.?[isPrimary == true][0].filePath :
+                                      item.product.images[0].filePath) :
+                                      'https://via.placeholder.com/100'}"
+                             th:alt="${item.product.name}"
+                             class="cart-item-image">
+                    </a>
+                    <div class="cart-item-info">
+                        <div>
+                            <h3 class="cart-item-title" th:text="${item.product.name}"></h3>
+                            <span class="cart-item-weight"
+                                  th:text="${item.product.weightValue != null and item.product.weightUnit != null ?
+                                             #numbers.formatDecimal(item.product.weightValue, 1, 2) + ' ' + item.product.weightUnit :
+                                             ''}"></span>
+                        </div>
+                        <div class="cart-brand" th:text="${item.product.brand}"></div>
+                        <div class="cart-item-price">
+                            <span th:if="${item.product.price != null and item.product.discountedPrice != null and item.product.price > item.product.discountedPrice}"
+                                  class="original-price"
+                                  th:text="${#numbers.formatDecimal(item.product.price, 1, 2)} + ' ₽'"></span>
+                            <span th:text="${#numbers.formatDecimal(item.product.discountedPrice != null ? item.product.discountedPrice : item.product.price, 1, 2)} + ' ₽'"></span>
+                        </div>
                     </div>
-                    <div class="cart-item-brand" th:text="${item.product.brand != null ? item.product.brand : ''}"></div>
-                    <span class="cart-item-price"
-                          th:text="${#numbers.formatDecimal(item.unitPrice, 1, 2)} + ' ₽'"></span>
-                </div>
-
-                <div class="cart-item-controls">
-                    <div class="quantity-control">
-                        <form th:action="@{/cart/update/{id}(id=${item.id})}" method="post" class="quantity-form">
-                            <input type="hidden" name="quantityChange" value="-1">
-                            <button type="submit" class="quantity-btn"
-                                    th:disabled="${item.quantity <= 1}">
+                    <div class="cart-controls">
+                        <div class="quantity-control">
+                            <button class="quantity-btn quantity-minus"
+                                    th:disabled="${item.quantity <= 1 or item.ordered}"
+                                    th:data-item-id="${item.id}"
+                                    onclick="updateQuantity(this, -1)">
                                 <i class="fas fa-minus"></i>
                             </button>
-                        </form>
-                        <span class="quantity-value" th:text="${item.quantity}"></span>
-                        <form th:action="@{/cart/update/{id}(id=${item.id})}" method="post" class="quantity-form">
-                            <input type="hidden" name="quantityChange" value="1">
-                            <button type="submit" class="quantity-btn"
-                                    th:disabled="${item.quantity >= 10 or weightLimitExceeded}">
+                            <span class="quantity-value" th:text="${item.quantity}"></span>
+                            <button class="quantity-btn quantity-plus"
+                                    th:disabled="${item.quantity >= (item.product.stock != null ? T(java.lang.Math).min(item.product.stock, 10) : 10) or item.ordered}"
+                                    th:data-item-id="${item.id}"
+                                    onclick="updateQuantity(this, 1)">
                                 <i class="fas fa-plus"></i>
                             </button>
-                        </form>
+                        </div>
+                        <button class="remove-btn" th:data-item-id="${item.id}"
+                                th:disabled="${item.ordered}">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
-                    <button class="remove-btn" th:data-item-id="${item.id}">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    <div class="cart-item-total"
+                         th:text="${#numbers.formatDecimal(item.totalPrice, 1, 2)} + ' ₽'"></div>
                 </div>
+            </div>
+        </form>
 
-                <div class="cart-item-total"
-                     th:text="${#numbers.formatDecimal(item.totalPrice, 1, 2)} + ' ₽'"></div>
+        <form id="checkoutForm" th:action="@{/orders/checkout}" method="post">
+            <div class="cart-summary">
+                <div class="weight-info">
+                    Вес заказа: <span id="totalWeight">0 кг</span> / 10.0 кг
+                </div>
+                <div class="cart-total">
+                    <span>Итого:</span>
+                    <span id="totalPrice">0 ₽</span>
+                </div>
+                <div class="weight-warning" id="weightWarning">
+                    Максимальный вес заказа (10 кг) превышен. Удалите или уменьшите количество товаров.
+                </div>
+                <input type="hidden" name="selectedItems" id="selectedItemsForCheckout">
+                <button type="submit" class="checkout-btn" id="checkoutButton">Оформить заказ</button>
             </div>
-        </div>
-
-        <div class="cart-summary">
-            <div class="weight-info">
-                Вес заказа: <span th:text="${#numbers.formatDecimal(totalWeightInKg, 1, 2)} + ' кг'"></span> / 10 кг
-            </div>
-            <div class="cart-total">
-                <span>Итого:</span>
-                <span th:text="${#numbers.formatDecimal(totalPrice, 1, 2)} + ' ₽'"></span>
-            </div>
-            <div class="weight-warning" th:classappend="${weightLimitExceeded ? 'active' : ''}">
-                Максимальный вес заказа (10 кг) превышен. Удалите или уменьшите количество товаров.
-            </div>
-            <button class="checkout-btn" th:disabled="${weightLimitExceeded}">Оформить заказ</button>
-        </div>
+        </form>
     </div>
 
     <div th:if="${cartItems == null or cartItems.isEmpty()}" class="empty-cart">
@@ -557,61 +622,196 @@
         <a href="/products" class="continue-shopping">Продолжить покупки</a>
     </div>
 
-    <!-- Модальное окно подтверждения удаления -->
     <div id="confirmModal" class="modal">
         <div class="modal-content">
             <h3 class="modal-title">Удалить товар из корзины?</h3>
             <div class="modal-buttons">
-                <button id="confirmDelete" class="modal-btn modal-btn-confirm">Удалить</button>
-                <button id="cancelDelete" class="modal-btn modal-btn-cancel">Отмена</button>
+                <button id="confirmDeleteBtn" class="modal-btn modal-btn-confirm">Удалить</button>
+                <button id="cancelDeleteBtn" class="modal-btn modal-btn-cancel">Отмена</button>
             </div>
         </div>
     </div>
 </main>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Модальное окно для удаления
-        const modal = document.getElementById('confirmModal');
-        const confirmDeleteBtn = document.getElementById('confirmDelete');
-        const cancelDeleteBtn = document.getElementById('cancelDelete');
-        let currentItemId = null;
-        let currentRemoveBtn = null;
+<script th:inline="javascript">
+    //<![CDATA[
+    function updateQuantity(button, change) {
+        const itemId = button.getAttribute('data-item-id');
+        const cartItem = button.closest('.cart-item');
+        const quantitySpan = cartItem.querySelector('.quantity-value');
+        const totalSpan = cartItem.querySelector('.cart-item-total');
+        const minusBtn = cartItem.querySelector('.quantity-minus');
+        const plusBtn = cartItem.querySelector('.quantity-plus');
+        const stock = parseInt(cartItem.getAttribute('data-stock'));
+        const maxAllowed = Math.min(stock, 10);
 
-        // Обработчики для кнопок удаления
-        document.querySelectorAll('.remove-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                currentItemId = this.getAttribute('data-item-id');
-                currentRemoveBtn = this;
-                modal.style.display = 'flex';
+        fetch(`/cart/update/${itemId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `quantityChange=${change}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.remove) {
+                        cartItem.remove();
+                        updateTotals();
+                        return;
+                    }
+                    quantitySpan.textContent = data.newQuantity;
+                    totalSpan.textContent = data.totalPrice.toFixed(2) + ' ₽';
+                    minusBtn.disabled = data.newQuantity <= 1 || data.ordered;
+                    plusBtn.disabled = data.newQuantity >= maxAllowed || data.ordered;
+                    updateTotals();
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка AJAX:', error);
+                alert('Произошла ошибка при обновлении количества');
             });
-        });
+    }
 
-        // Подтверждение удаления
-        confirmDeleteBtn.addEventListener('click', function() {
-            if (currentItemId) {
-                const form = document.createElement('form');
-                form.method = 'post';
-                form.action = `/cart/remove/${currentItemId}`;
-                document.body.appendChild(form);
-                form.submit();
+    function updateSelection(checkbox) {
+        const itemId = checkbox.getAttribute('data-item-id');
+        const isChecked = checkbox.checked;
+        const cartItem = checkbox.closest('.cart-item');
+        const minusBtn = cartItem.querySelector('.quantity-minus');
+        const plusBtn = cartItem.querySelector('.quantity-plus');
+        const removeBtn = cartItem.querySelector('.remove-btn');
+
+        console.log(`Отправка запроса для itemId=${itemId}, isSelected=${isChecked}`);
+
+        fetch(`/cart/update-selection/${itemId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `isSelected=${isChecked}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Ответ сервера:', data);
+                if (data.success) {
+                    checkbox.checked = data.ordered;
+                    cartItem.style.backgroundColor = data.ordered ? 'transparent' : '#f8f9fa';
+                    cartItem.style.opacity = data.ordered ? '1' : '0.7';
+                    minusBtn.disabled = data.ordered || parseInt(cartItem.querySelector('.quantity-value').textContent) <= 1;
+                    plusBtn.disabled = data.ordered || parseInt(cartItem.querySelector('.quantity-value').textContent) >= maxStock(cartItem);
+                    removeBtn.disabled = data.ordered;
+                    updateTotals();
+                } else {
+                    alert(data.message);
+                    checkbox.checked = !isChecked;
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка AJAX:', error);
+                alert('Произошла ошибка при обновлении состояния');
+                checkbox.checked = !isChecked;
+            });
+    }
+
+    function maxStock(cartItem) {
+        const stock = parseInt(cartItem.getAttribute('data-stock'));
+        return Math.min(stock, 10);
+    }
+
+    function updateTotals() {
+        let totalPrice = 0;
+        let totalWeight = 0;
+        const selectedItems = [];
+        const checkboxes = document.querySelectorAll('.cart-item-checkbox:checked');
+
+        checkboxes.forEach(checkbox => {
+            const cartItem = checkbox.closest('.cart-item');
+            const priceText = cartItem.querySelector('.cart-item-price > span:last-child').textContent;
+            const price = parseFloat(priceText.replace(' ₽', ''));
+            const quantity = parseInt(cartItem.querySelector('.quantity-value').textContent);
+            const weightText = cartItem.querySelector('.cart-item-weight').textContent.trim();
+            let weight = 0;
+            if (weightText) {
+                const weightParts = weightText.split(' ');
+                const weightValue = parseFloat(weightParts[0]);
+                const weightUnit = weightParts[1];
+                if (!isNaN(weightValue)) {
+                    weight = weightUnit === 'г' ? weightValue / 1000 : weightValue;
+                }
             }
-            modal.style.display = 'none';
+            totalPrice += price * quantity;
+            totalWeight += weight * quantity;
+            selectedItems.push(checkbox.value);
         });
 
-        // Отмена удаления
-        cancelDeleteBtn.addEventListener('click', function() {
-            modal.style.display = 'none';
-        });
+        document.getElementById('totalPrice').textContent = totalPrice.toFixed(2) + ' ₽';
+        document.getElementById('totalWeight').textContent = totalWeight.toFixed(2) + ' кг';
+        document.getElementById('selectedItemsForCheckout').value = selectedItems.join(',');
+        const isWeightExceeded = totalWeight > 10;
+        document.getElementById('weightWarning').style.display = isWeightExceeded ? 'block' : 'none';
+        document.getElementById('checkoutButton').disabled = selectedItems.length === 0 || isWeightExceeded;
+    }
 
-        // Закрытие модального окна при клике вне его
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                modal.style.display = 'none';
-            }
-        });
+    document.addEventListener('DOMContentLoaded', () => {
+        updateTotals();
+        const confirmModal = document.getElementById('confirmModal');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+        let currentItemId = null;
+        let currentCartItem = null;
+
+        if (confirmModal && confirmDeleteBtn && cancelDeleteBtn) {
+            document.querySelectorAll('.remove-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    currentItemId = this.getAttribute('data-item-id');
+                    currentCartItem = this.closest('.cart-item');
+                    confirmModal.style.display = 'flex';
+                });
+            });
+
+            confirmDeleteBtn.addEventListener('click', function() {
+                if (currentItemId && currentCartItem) {
+                    fetch(`/cart/remove/${currentItemId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        }
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                currentCartItem.remove();
+                                updateTotals();
+                            } else {
+                                alert(data.message);
+                            }
+                            confirmModal.style.display = 'none';
+                        })
+                        .catch(error => {
+                            console.error('Ошибка AJAX:', error);
+                            alert('Произошла ошибка при удалении товара');
+                            confirmModal.style.display = 'none';
+                        });
+                }
+            });
+
+            cancelDeleteBtn.addEventListener('click', function() {
+                confirmModal.style.display = 'none';
+            });
+
+            confirmModal.addEventListener('click', function(e) {
+                if (e.target === confirmModal) {
+                    confirmModal.style.display = 'none';
+                }
+            });
+        } else {
+            console.warn('Элементы для модального окна удаления не найдены');
+        }
     });
+    //]]>
 </script>
 </body>
 </html>

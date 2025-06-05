@@ -1,5 +1,6 @@
 package com.nzby.homeshop.Services;
 
+import com.nzby.homeshop.POJO.Address;
 import com.nzby.homeshop.POJO.User;
 import com.nzby.homeshop.POJO.Enum.Role;
 import com.nzby.homeshop.Repository.UserRepository;
@@ -11,6 +12,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -108,10 +110,4 @@ public class UserService {
         return userRepository.findByEmail(email);
     }
 
-
-//    public User getCurrentUser() {
-//        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-//        return userRepository.findByUsername(username)
-//                .orElseThrow(() -> new RuntimeException("Пользователь с именем " + username + " не найден"));
-//    }
 }
