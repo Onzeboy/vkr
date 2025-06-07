@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админская панель техподдержки - Premium Store</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        :root {
+            --primary: #333333;
+            --primary-dark: #1a1a1a;
+            --accent: #666666;
+            --danger: #e63946;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --light-gray: #e9ecef;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            background-color: var(--light);
+        }
+
+        header {
+            background-color: white;
+            padding: 1rem 0;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .logo i {
+            color: var(--accent);
+        }
+
+        .header-actions a {
+            text-decoration: none;
+            color: var(--dark);
+            font-weight: 500;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .header-actions a:hover {
+            color: var(--primary);
+        }
+
+        .main-content {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .admin-dashboard {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 2rem;
+        }
+
+        .ticket-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .ticket-item {
+            background-color: var(--light-gray);
+            padding: 1rem;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .ticket-info {
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .ticket-status {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
+        .status-select {
+            padding: 0.5rem;
+            border-radius: 6px;
+            border: 1px solid var(--gray);
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .header-container {
+                flex-direction: column;
+                gap: 1rem;
+                padding: 0 1rem;
+            }
+
+            .admin-dashboard {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div class="header-container">
+        <div class="logo" onclick="window.location.href='/admin'">
+            <i class="fas fa-headset"></i>
+            <span>Tech Support Admin</span>
+        </div>
+        <div class="header-actions">
+            <a href="/logout">Выйти</a>
+        </div>
+    </div>
+</header>
+
+<main class="main-content">
+    <div class="admin-dashboard">
+        <h2>Открытые тикеты техподдержки</h2>
+        <div class="ticket-list" th:each="ticket : ${openTickets}">
+            <div class="ticket-item">
+                <div>
+                    <div class="ticket-info">
+                        <a th:href="@{'/admin/chat/' + ${ticket.id}}" th:text="${ticket.user.email} + ' - ' + ${#temporals.format(ticket.createdAt, 'dd.MM.yyyy HH:mm')}"></a>
+                    </div>
+                    <div class="ticket-status" th:text="'Статус: ' + ${ticket.status}"></div>
+                </div>
+                <select class="status-select" th:attr="data-ticket-id=${ticket.id}" onchange="updateStatus(this)">
+                    <option th:each="status : ${T(com.nzby.homeshop.POJO.SupportTicket.TicketStatus).values()}"
+                            th:value="${status}"
+                            th:selected="${ticket.status == status}"
+                            th:text="${status}"></option>
+                </select>
+            </div>
+        </div>
+        <div th:if="${openTickets.isEmpty()}" style="text-align: center; color: var(--gray);">
+            Нет открытых тикетов.
+        </div>
+    </div>
+</main>
+
+<script defer>
+    function updateStatus(select) {
+        const ticketId = select.getAttribute('data-ticket-id');
+        const status = select.value;
+        fetch(`/admin/api/tickets/${ticketId}/update-status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `status=${status}`
+        })
+            .then(response => response.text())
+            .then(data => {
+                alert(data);
+                location.reload();
+            })
+            .catch(error => {
+                console.error('Error updating status:', error);
+                alert('Ошибка при обновлении статуса');
+            });
+    }
+</script>
+</body>
+</html>
