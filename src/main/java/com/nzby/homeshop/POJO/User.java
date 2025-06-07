@@ -1,5 +1,6 @@
 package com.nzby.homeshop.POJO;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.nzby.homeshop.POJO.Enum.Role;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
@@ -64,7 +65,8 @@ public class User implements UserDetails {
     private boolean enabled = false;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    private List<Address> addresses; // Множество адресов пользователя
+    @JsonManagedReference
+    private List<Address> addresses;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Order> orders;
@@ -72,6 +74,8 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<CartItem> cartItems = new ArrayList<>();
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<SupportTicket> tickets;
 
     public boolean isEnabled() {
         return enabled;
@@ -151,6 +155,22 @@ public class User implements UserDetails {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public List<Order> getOrders() {
+        return orders;
+    }
+
+    public void setOrders(List<Order> orders) {
+        this.orders = orders;
+    }
+
+    public List<CartItem> getCartItems() {
+        return cartItems;
+    }
+
+    public void setCartItems(List<CartItem> cartItems) {
+        this.cartItems = cartItems;
     }
 
     @Override

@@ -1,7 +1,10 @@
 package com.nzby.homeshop.Repository;
 
+import com.nzby.homeshop.POJO.Category;
 import com.nzby.homeshop.POJO.Enum.ProductStatus;
 import com.nzby.homeshop.POJO.Product;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -31,4 +34,17 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "FROM reviews WHERE product_id = :productId",
             nativeQuery = true)
     Object[] getAverageRatingAndCount(@Param("productId") Long productId);
+
+    @Query("SELECT p FROM Product p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) AND p.category = :category")
+    Page<Product> findByNameContainingIgnoreCaseAndCategory(@Param("search") String search, @Param("category") Category category, Pageable pageable);
+
+    @Query("SELECT p FROM Product p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))")
+    Page<Product> findByNameContainingIgnoreCase(@Param("search") String search, Pageable pageable);
+
+    Page<Product> findByCategory(Category category, Pageable pageable);
+
+    @Query("SELECT p FROM Product p WHERE " +
+            "(:search IS NULL OR LOWER(p.name) LIKE %:search%) AND " +
+            "(:categoryId IS NULL OR p.category.id = :categoryId)")
+    Page<Product> searchProducts(@Param("search") String search, @Param("categoryId") Long categoryId, Pageable pageable);
 }

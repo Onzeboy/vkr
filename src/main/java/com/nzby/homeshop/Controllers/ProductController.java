@@ -17,7 +17,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -25,9 +27,11 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.security.Principal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Controller
@@ -105,6 +109,7 @@ public class ProductController {
 
         return "product-details";
     }
+
     @GetMapping("/reviews/{id}")
     @Transactional
     public String showAllReviews(@PathVariable Long id, @RequestParam(defaultValue = "1") int page, Model model) {
@@ -157,4 +162,47 @@ public class ProductController {
         return "all-reviews";
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<Page<Product>> searchProducts(
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "category", required = false) Long categoryId,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "9") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Product> products = productService.searchProducts(search, categoryId, pageable);
+        return ResponseEntity.ok(products);
+    }
+
+    @GetMapping("/stock")
+    public ResponseEntity<List<Map<String, Integer>>> getStock() {
+        List<Map<String, Integer>> stock = productService.getStock()
+                .entrySet()
+                .stream()
+                .map(entry -> Map.of(
+                        "productId", entry.getKey().intValue(),
+                        "quantity", entry.getValue()
+                ))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(stock);
+    }
+
+    @GetMapping
+    public String showProductCatalog(
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "category", required = false) String category,
+            Model model) {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        Page<Product> pageProducts = productService.findProducts(search, category, page);
+        model.addAttribute("pageProducts", pageProducts.getContent());
+        model.addAttribute("totalPages", pageProducts.getTotalPages());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("allCategories", productService.findAllCategories());
+        model.addAttribute("allTags", productService.findAllCategories());
+        model.addAttribute("isAuthenticated", auth.isAuthenticated());
+        model.addAttribute("cartCount", cartService.getCartItemsCount(userService.getCurrentUser()));
+        return "all";
+    }
 }

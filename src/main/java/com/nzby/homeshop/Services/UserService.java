@@ -5,6 +5,10 @@ import com.nzby.homeshop.POJO.User;
 import com.nzby.homeshop.POJO.Enum.Role;
 import com.nzby.homeshop.Repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -12,6 +16,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -110,4 +115,25 @@ public class UserService {
         return userRepository.findByEmail(email);
     }
 
+    public Page<User> findUsers(String email, Role role, PageRequest pageable) {
+        return userRepository.findUsers(email, role, pageable);
+    }
+
+    public User findById(Long id) {
+        return userRepository.findById(id).orElse(null);
+    }
+
+    public void updateUserRole(Long id, Role role) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+        user.setRole(role);
+        userRepository.save(user);
+    }
+
+    public void toggleUserEnabled(Long id, boolean enabled) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+        user.setEnabled(enabled);
+        userRepository.save(user);
+    }
 }

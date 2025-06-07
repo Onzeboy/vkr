@@ -1,18 +1,16 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium Store - Все товары</title>
+    <title>Premium Store - Каталог товаров</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --primary: #4361ee;
-            --primary-dark: #3a56d4;
-            --secondary: #3f37c9;
-            --accent: #4895ef;
-            --danger: #f72585;
-            --success: #4cc9f0;
+            --primary: #333333;
+            --primary-dark: #1a1a1a;
+            --accent: #666666;
+            --danger: #e63946;
             --light: #f8f9fa;
             --dark: #212529;
             --gray: #6c757d;
@@ -34,7 +32,6 @@
             background-color: var(--light);
         }
 
-        /* Хедер */
         header {
             background-color: white;
             padding: 1rem 0;
@@ -60,6 +57,7 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            text-decoration: none;
         }
 
         .logo i {
@@ -135,35 +133,100 @@
             font-size: 0.7rem;
         }
 
-        /* Основное содержимое */
         .main-content {
             max-width: 1200px;
             margin: 2rem auto;
             padding: 0 2rem;
         }
 
-        .hero {
-            text-align: center;
-            margin-bottom: 3rem;
-            padding: 3rem 0;
+        .search-filter-container {
+            margin-bottom: 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
         }
 
-        .hero h1 {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            color: var(--primary);
+        .search-form {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
         }
 
-        .hero p {
-            font-size: 1.2rem;
+        .search-input {
+            width: 100%;
+            padding: 0.8rem 2.5rem 0.8rem 1rem;
+            border: 1px solid var(--light-gray);
+            border-radius: 8px;
+            font-size: 1rem;
+            color: var(--dark);
+            background-color: white;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 8px rgba(51, 51, 51, 0.3);
+        }
+
+        .search-input:hover {
+            border-color: var(--accent);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
             color: var(--gray);
-            max-width: 700px;
-            margin: 0 auto;
+            font-size: 1rem;
+            pointer-events: none;
+        }
+
+        .category-filter {
+            min-width: 200px;
+            position: relative;
+        }
+
+        .category-filter select {
+            width: 100%;
+            padding: 0.8rem 2.5rem 0.8rem 1rem;
+            border: 1px solid var(--light-gray);
+            border-radius: 8px;
+            font-size: 1rem;
+            color: var(--dark);
+            background-color: white;
+            box-shadow: var(--shadow);
+            appearance: none;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .category-filter select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 8px rgba(51, 51, 51, 0.3);
+        }
+
+        .category-filter select:hover {
+            border-color: var(--accent);
+        }
+
+        .category-icon {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray);
+            font-size: 1rem;
+            pointer-events: none;
         }
 
         .cards-container {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            grid-template-columns: repeat(3, 1fr);
             gap: 2rem;
             margin-top: 2rem;
         }
@@ -201,6 +264,10 @@
             height: 220px;
         }
 
+        .product-image-link {
+            text-decoration: none;
+        }
+
         .product-image {
             width: 100%;
             height: 100%;
@@ -208,8 +275,9 @@
             transition: var(--transition);
         }
 
-        .product-card:hover .product-image {
+        .product-image:hover {
             transform: scale(1.05);
+            opacity: 0.8;
         }
 
         .product-info {
@@ -221,6 +289,14 @@
             margin-bottom: 0.5rem;
             color: var(--dark);
             font-weight: 600;
+            display: inline;
+        }
+
+        .product-weight {
+            font-size: 0.9rem;
+            color: var(--gray);
+            font-weight: 500;
+            display: inline;
         }
 
         .product-price-container {
@@ -259,6 +335,11 @@
             color: var(--gray);
         }
 
+        .no-rating {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
         .product-actions {
             display: flex;
             justify-content: space-between;
@@ -279,9 +360,39 @@
             gap: 0.5rem;
         }
 
-        .add-to-cart:hover {
-            background-color: var(--primary-dark);
-            transform: translateY(-2px);
+        .add-to-cart.in-cart {
+            background-color: #4CAF50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 0.6rem 1rem;
+        }
+
+        .add-to-cart.in-cart .cart-minus,
+        .add-to-cart.in-cart .cart-plus {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .add-to-cart.in-cart .cart-minus:hover,
+        .add-to-cart.in-cart .cart-plus:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .add-to-cart.in-cart .cart-quantity {
+            font-weight: 600;
+            min-width: 20px;
+            text-align: center;
         }
 
         .wishlist-btn {
@@ -301,7 +412,66 @@
             color: var(--danger);
         }
 
-        /* Адаптивность */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 2rem;
+            gap: 0.5rem;
+        }
+
+        .pagination a {
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--light-gray);
+            border-radius: 6px;
+            color: var(--dark);
+            transition: var(--transition);
+        }
+
+        .pagination a:hover {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .pagination a.active {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .pagination a.disabled {
+            color: var(--gray);
+            pointer-events: none;
+            cursor: default;
+        }
+
+        .stars-container {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .star {
+            position: relative;
+            display: inline-block;
+            width: 0.9rem;
+            height: 0.9rem;
+            color: #1a1a1a;
+        }
+
+        .star i {
+            position: absolute;
+            top: 0;
+            left: 0;
+            color: #ffc107;
+            clip-path: inset(0 calc(100% - (var(--rating) * 100%)) 0 0);
+        }
+
+        .star i.fas.fa-star {
+            font-size: 0.9rem;
+        }
+
         @media (max-width: 768px) {
             .header-container {
                 flex-direction: column;
@@ -313,16 +483,8 @@
                 gap: 1rem;
             }
 
-            .hero h1 {
-                font-size: 2rem;
-            }
-
-            .hero p {
-                font-size: 1rem;
-            }
-
             .cards-container {
-                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+                grid-template-columns: repeat(2, 1fr);
             }
         }
 
@@ -339,99 +501,440 @@
     </style>
 </head>
 <body>
-<!-- Хедер -->
 <header>
     <div class="header-container">
-        <div class="logo">
+        <a href="/" class="logo">
             <i class="fas fa-store"></i>
             <span>Premium Store</span>
-        </div>
+        </a>
         <nav class="header-nav">
-            <a href="#">Каталог</a>
-            <a href="#">Акции</a>
+            <a href="/products">Товары</a>
+            <a href="#">Продукты</a>
             <a href="#">Новинки</a>
-            <a href="#">Доставка</a>
-            <a href="#">Контакты</a>
+            <a href="#delivery">Доставка</a>
+            <a href="#contacts">Контакты</a>
         </nav>
         <div class="header-actions">
-            <a href="#"><i class="fas fa-user"></i> Войти</a>
-            <a href="#" class="cart-btn">
+            <a th:href="@{/auth/login}" th:if="${!isAuthenticated}">
+                <i class="fas fa-user"></i> Войти
+            </a>
+            <a th:href="@{/auth/logout}" th:if="${isAuthenticated}">
+                <i class="fas fa-sign-out-alt"></i> Выйти
+            </a>
+            <a href="/cart" class="cart-btn">
                 <i class="fas fa-shopping-cart"></i>
-                <span class="cart-count">0</span>
+                <span class="cart-count" th:text="${cartCount}">0</span>
             </a>
         </div>
     </div>
 </header>
 
-<main>
-    <!-- Основное содержимое -->
-    <div class="hero">
-        <h1>Все товары</h1>
-        <p>Ознакомьтесь с полным ассортиментом нашей продукции</p>
+<main class="main-content">
+    <div class="search-filter-container">
+        <form class="search-form" onsubmit="searchProducts(event)">
+            <input type="text" id="search-input" name="search" class="search-input" th:value="${param.search}" placeholder="Поиск по названию...">
+            <i class="fas fa-search search-icon"></i>
+        </form>
+        <form th:action="@{/products}" method="get" class="category-filter">
+            <select name="category" id="category-select" onchange="this.form.submit()">
+                <option value="">Все категории</option>
+                <th:block th:each="category : ${allCategories}">
+                    <option th:value="${category.id}" th:text="${category.name}" th:selected="${param.category != null and param.category.equals(category.id.toString())}"></option>
+                </th:block>
+            </select>
+            <i class="fas fa-chevron-down category-icon"></i>
+            <input type="hidden" name="search" th:value="${param.search}">
+        </form>
     </div>
 
-    <!-- Контейнер для всех товаров -->
     <div class="cards-container" id="products-container">
+        <div th:if="${pageProducts.isEmpty()}">
+            <p>Товары отсутствуют</p>
+        </div>
+        <div th:each="product, iterStat : ${pageProducts}" th:if="${iterStat.count <= 9}" class="product-card">
+            <div class="product-image-container">
+                <a th:href="@{/products/{id}(id=${product.id})}" class="product-image-link">
+                    <img th:src="${
+              product.images != null and !product.images.isEmpty() ?
+                  (product.images.?[isPrimary == true].size() > 0 ?
+                      '/uploaded-images/' + product.images.?[isPrimary == true][0].filePath :
+                      '/uploaded-images/' + product.images[0].filePath) :
+                  'https://via.placeholder.com/250'
+              }"
+                         th:alt="${product.name}"
+                         class="product-image" />
+                </a>
+            </div>
+            <div class="product-info">
+                <div>
+                    <h3 class="product-title" th:text="${product.name}"></h3>
+                    <span class="product-weight" th:text="${product.weightValue != null ? ' ' + product.weightValue + ' ' + product.weightUnit : ''}"></span>
+                </div>
+                <div class="product-price-container">
+                    <span class="product-price" th:text="${#numbers.formatDecimal(product.discountedPrice != null ? product.discountedPrice.doubleValue() : product.price.doubleValue(), 1, 2)} + ' ₽'"></span>
+                    <span class="product-old-price" th:if="${product.discountedPrice != null and product.discountedPrice.compareTo(product.price) < 0}" th:text="${#numbers.formatDecimal(product.price.doubleValue(), 1, 2)} + ' ₽'"></span>
+                </div>
+                <div class="product-badge" th:if="${product.getDiscountPercentage() > 0}" th:text="'-' + ${product.getDiscountPercentage()} + '%'"></div>
+                <div class="product-badge" th:if="${product.status == T(com.nzby.homeshop.POJO.Enum.ProductStatus).NEW}">Новинка</div>
+                <div class="product-badge" th:if="${product.status == T(com.nzby.homeshop.POJO.Enum.ProductStatus).FEATURED}">Рекомендуем</div>
+                <div class="product-rating" th:data-product-id="${product.id}">
+                    <th:block th:if="${product.averageRating != null and product.averageRating > 0}">
+                        <div class="stars-container">
+                            <th:block th:each="i : ${#numbers.sequence(1, 5)}">
+                <span class="star" th:style="${'--rating: ' + (i <= product.averageRating ? 1 : (i - 1 < product.averageRating ? product.averageRating - (i - 1) : 0))}">
+                  <i class="fas fa-star"></i>
+                </span>
+                            </th:block>
+                        </div>
+                        <span th:text="'(' + ${product.ratingsCount != null ? product.ratingsCount : 0} + ')'"></span>
+                    </th:block>
+                    <th:block th:unless="${product.averageRating != null and product.averageRating > 0}">
+                        <span class="no-rating">Нет отзывов</span>
+                    </th:block>
+                </div>
+                <div class="product-actions">
+                    <div class="cart-controls">
+                        <button class="add-to-cart" th:data-product-id="${product.id}" th:if="${isAuthenticated}">
+                            <i class="fas fa-cart-plus"></i> В корзину
+                        </button>
+                        <div class="add-to-cart" th:unless="${isAuthenticated}">
+                            <a th:href="@{/auth/login}" style="color: white; text-decoration: none;">
+                                <i class="fas fa-cart-plus"></i> Войти, чтобы добавить
+                            </a>
+                        </div>
+                    </div>
+                    <button class="wishlist-btn">
+                        <i class="far fa-heart"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="pagination" th:if="${totalPages > 1}">
+        <a th:href="@{/products(page=${currentPage - 1},search=${param.search},category=${param.category})}"
+           th:classappend="${currentPage <= 0} ? 'disabled'"
+           aria-label="Previous">«</a>
+        <th:block th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
+            <a th:href="@{/products(page=${i},search=${param.search},category=${param.category})}"
+               th:classappend="${i == currentPage} ? 'active'"
+               th:text="${i + 1}"></a>
+        </th:block>
+        <a th:href="@{/products(page=${currentPage + 1},search=${param.search},category=${param.category})}"
+           th:classappend="${currentPage >= totalPages - 1} ? 'disabled'"
+           aria-label="Next">»</a>
     </div>
 </main>
 
 <script>
     document.addEventListener('DOMContentLoaded', async function() {
-        try {
-            // Асинхронный запрос к серверу для получения всех товаров
-            const response = await fetch('/api/products');
-            const products = await response.json();
-            renderProducts(products);
-        } catch (error) {
-            console.error('Ошибка при загрузке товаров:', error);
+        const MAX_QUANTITY = 10;
+        const cartButtons = document.querySelectorAll('.add-to-cart');
+        const cartCount = document.querySelector('.cart-count');
+        const searchInput = document.querySelector('#search-input');
+        const categorySelect = document.querySelector('#category-select');
+        const productsContainer = document.querySelector('#products-container');
+
+        let cartItems = [];
+        let stockQuantities = {};
+
+        // Загрузка корзины и остатков
+        async function initializeCart() {
+            try {
+                const cartResponse = await fetch('/api/cart/items', {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (cartResponse.ok) {
+                    cartItems = await cartResponse.json();
+                    cartCount.textContent = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+                } else {
+                    console.warn('Не удалось загрузить элементы корзины:', cartResponse.status);
+                    cartCount.textContent = '0';
+                }
+
+                const stockResponse = await fetch('/api/products/stock', {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (stockResponse.ok) {
+                    const stockData = await stockResponse.json();
+                    stockData.forEach(item => {
+                        stockQuantities[item.productId] = Math.min(item.quantity, MAX_QUANTITY);
+                    });
+                } else {
+                    console.warn('Не удалось загрузить данные об остатках:', stockResponse.status);
+                }
+            } catch (error) {
+                console.error('Ошибка при загрузке данных:', error);
+                cartCount.textContent = '0';
+            }
         }
-    });
 
-    // Функция отрисовки товаров
-    function renderProducts(products) {
-        const container = document.getElementById('products-container');
-        container.innerHTML = ''; // Очищаем контейнер перед добавлением
+        // Инициализация кнопок корзины
+        async function initializeCartButtons() {
+            await initializeCart();
+            cartButtons.forEach(button => {
+                const productId = button.getAttribute('data-product-id');
+                if (!productId) return;
 
-        products.forEach(product => {
-            let badge = '';
-            if (product.status === 'NEW') {
-                badge = '<div class="product-badge">Новинка</div>';
-            } else if (product.status === 'SALE') {
-                badge = `<div class="product-badge">-${product.discount}%</div>`;
-            } else if (product.status === 'FEATURED') {
-                badge = '<div class="product-badge">Рекомендуем</div>';
+                const cartItem = cartItems.find(item => item.productId == productId);
+                const available = stockQuantities[productId] !== undefined ? Math.min(stockQuantities[productId], MAX_QUANTITY) : MAX_QUANTITY;
+
+                button.setAttribute('data-max-quantity', available);
+
+                if (cartItem) {
+                    updateCartButton(button, {
+                        cartItemId: cartItem.id,
+                        totalItems: cartItems.reduce((sum, item) => sum + item.quantity, 0),
+                        quantity: Math.min(cartItem.quantity, available)
+                    });
+                }
+            });
+        }
+
+        initializeCartButtons();
+
+        // Обработка кликов по кнопке "В корзину"
+        cartButtons.forEach(button => {
+            button.addEventListener('click', async function(e) {
+                e.preventDefault();
+                if (this.classList.contains('in-cart')) return;
+
+                const productId = this.getAttribute('data-product-id');
+                const available = parseInt(this.getAttribute('data-max-quantity')) || MAX_QUANTITY;
+
+                if (available <= 0) {
+                    alert('Товара нет в наличии');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/cart/add', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ productId, quantity: 1 })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        updateCartButton(this, data);
+                        cartCount.textContent = data.totalItems;
+                        const newAvailable = available - 1;
+                        this.setAttribute('data-max-quantity', newAvailable >= 0 ? newAvailable : 0);
+                    } else {
+                        const errorText = await response.text();
+                        alert(errorText || 'Ошибка при добавлении товара');
+                    }
+                } catch (error) {
+                    console.error('Ошибка при добавлении в корзину:', error);
+                    alert('Произошла ошибка при добавлении товара в корзину');
+                }
+            });
+        });
+
+        // Обработка изменения количества
+        document.addEventListener('click', async function(e) {
+            const target = e.target.closest('.cart-minus') || e.target.closest('.cart-plus');
+            if (!target) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            const button = target.closest('.add-to-cart');
+            const quantityEl = button.querySelector('.cart-quantity');
+            const plusBtn = button.querySelector('.cart-plus');
+            const currentQuantity = parseInt(quantityEl.textContent);
+            const change = target.classList.contains('cart-minus') ? -1 : 1;
+            const newQuantity = currentQuantity + change;
+            const cartItemId = quantityEl.getAttribute('data-cart-item-id');
+            const maxAvailable = parseInt(button.getAttribute('data-max-quantity')) || MAX_QUANTITY;
+
+            if (newQuantity > MAX_QUANTITY) {
+                alert(`Максимальное количество одного товара: ${MAX_QUANTITY} шт.`);
+                return;
             }
 
-            const card = document.createElement('div');
-            card.className = 'product-card';
-            card.innerHTML = `
-        ${badge}
-        <div class="product-image-container">
-          <img class="product-image" src="${product.imageUrl || 'https://via.placeholder.com/300'}" alt="${product.name}" loading="lazy">
-        </div>
-        <div class="product-info">
-          <h3 class="product-title">${product.name}</h3>
-          <div class="product-price-container">
-            <span class="product-price">${product.price} ₽</span>
-            ${product.discount ? `<span class="product-old-price">${product.oldPrice} ₽</span>` : ''}
-          </div>
-          <div class="product-rating">
-            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="far fa-star"></i>
-            <span>(${product.reviewsCount || 0})</span>
-          </div>
-          <div class="product-actions">
-            <button class="add-to-cart">
-              <i class="fas fa-cart-plus"></i> В корзину
-            </button>
-            <button class="wishlist-btn">
-              <i class="far fa-heart"></i>
-            </button>
-          </div>
-        </div>
-      `;
-            container.appendChild(card);
+            if (newQuantity < 1) {
+                if (confirm('Удалить товар из корзины?')) {
+                    try {
+                        const response = await fetch(`/api/cart/remove?cartItemId=${cartItemId}`, {
+                            method: 'DELETE'
+                        });
+                        if (response.ok) {
+                            const data = await response.json();
+                            resetCartButton(button, data.totalItems);
+                            button.setAttribute('data-max-quantity', maxAvailable + 1);
+                        } else {
+                            alert('Ошибка при удалении товара');
+                        }
+                    } catch (error) {
+                        console.error('Ошибка при удалении:', error);
+                        alert('Ошибка при удалении товара');
+                    }
+                }
+            } else {
+                try {
+                    const response = await fetch('/api/cart/update', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ cartItemId, quantity: newQuantity })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        quantityEl.textContent = data.quantity;
+                        cartCount.textContent = data.totalItems;
+                        button.setAttribute('data-max-quantity', maxAvailable - change);
+
+                        if (plusBtn) {
+                            plusBtn.disabled = data.quantity >= maxAvailable;
+                            plusBtn.style.opacity = data.quantity >= maxAvailable ? '0.5' : '1';
+                            plusBtn.title = data.quantity >= maxAvailable ? `Максимальное количество: ${maxAvailable} шт.` : '';
+                        }
+                    } else {
+                        const errorText = await response.text();
+                        alert(errorText || 'Ошибка при обновлении количества');
+                    }
+                } catch (error) {
+                    console.error('Ошибка при обновлении количества:', error);
+                    alert('Ошибка при обновлении количества товаров');
+                }
+            }
         });
-    }
+
+        function updateCartButton(button, data) {
+            const maxAvailable = parseInt(button.getAttribute('data-max-quantity'));
+            const actualQuantity = Math.min(data.quantity || 1, maxAvailable);
+
+            button.classList.add('in-cart');
+            button.innerHTML = `
+        <span class="cart-text">В корзине</span>
+        <button class="cart-minus">-</button>
+        <span class="cart-quantity" data-cart-item-id="${data.cartItemId}">${actualQuantity}</span>
+        <button class="cart-plus">+</button>
+      `;
+
+            const plusBtn = button.querySelector('.cart-plus');
+            if (plusBtn) {
+                plusBtn.disabled = actualQuantity >= maxAvailable;
+                plusBtn.style.opacity = actualQuantity >= maxAvailable ? '0.5' : '';
+                plusBtn.title = actualQuantity >= maxAvailable ? `Максимальное количество: ${maxAvailable} шт.` : '';
+            }
+        }
+
+        function resetCartButton(button, newTotalItems) {
+            button.classList.remove('in-cart');
+            button.innerHTML = '<i class="fas fa-cart-plus"></i> В корзину';
+            cartCount.textContent = newTotalItems;
+        }
+
+        // AJAX-поиск
+        async function searchProducts(event) {
+            event.preventDefault();
+            const searchTerm = searchInput.value.trim();
+            const category = categorySelect.value || '';
+            try {
+                const response = await fetch(`/api/products/search?search=${encodeURIComponent(searchTerm)}&category=${encodeURIComponent(category)}&page=0&size=9`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    updateProducts(data.content);
+                    updatePagination(data.number, data.totalPages);
+                    initializeCartButtons(); // Повторная инициализация кнопок после обновления товаров
+                    // Устанавливаем выбранную категорию в select после AJAX
+                    categorySelect.value = category;
+                } else {
+                    productsContainer.innerHTML = '<p>Ошибка при выполнении поиска</p>';
+                }
+            } catch (error) {
+                console.error('Ошибка при поиске:', error);
+                productsContainer.innerHTML = '<p>Произошла ошибка при поиске</p>';
+            }
+        }
+
+        function updateProducts(products) {
+            productsContainer.innerHTML = products.length === 0 ? '<p>Товары отсутствуют</p>' : '';
+            products.forEach(product => {
+                const productCard = document.createElement('div');
+                productCard.className = 'product-card';
+                productCard.innerHTML = `
+          <div class="product-image-container">
+            <a href="/products/${product.id}" class="product-image-link">
+              <img src="${product.images && product.images.length > 0 ?
+                    (product.images.find(img => img.isPrimary) ?
+                        '/uploaded-images/' + product.images.find(img => img.isPrimary).filePath :
+                        '/uploaded-images/' + product.images[0].filePath) :
+                    'https://via.placeholder.com/250'}" alt="${product.name}" class="product-image" />
+            </a>
+          </div>
+          <div class="product-info">
+            <div>
+              <h3 class="product-title">${product.name}</h3>
+              <span class="product-weight">${product.weightValue ? ' ' + product.weightValue + (product.weightUnit ? ' ' + product.weightUnit : '') : ''}</span>
+            </div>
+            <div class="product-price-container">
+              <span class="product-price">${(product.discountedPrice || product.price).toFixed(2)} ₽</span>
+              ${product.discountedPrice && product.discountedPrice < product.price ?
+                    `<span class="product-old-price">${product.price.toFixed(2)} ₽</span>` : ''}
+            </div>
+            ${product.discountPercentage > 0 ? `<div class="product-badge">-${product.discountPercentage}%</div>` : ''}
+            ${product.status === 'NEW' ? `<div class="product-badge">Новинка</div>` : ''}
+            ${product.status === 'FEATURED' ? `<div class="product-badge">Рекомендуем</div>` : ''}
+            <div class="product-rating" data-product-id="${product.id}">
+              ${product.averageRating && product.averageRating > 0 ?
+                    `<div class="stars-container">
+                  ${Array.from({length: 5}, (_, i) => `
+                    <span class="star" style="--rating: ${i + 1 <= product.averageRating ? 1 : (i < product.averageRating ? product.averageRating - i : 0)}">
+                      <i class="fas fa-star"></i>
+                    </span>`).join('')}
+                </div>
+                <span>(${product.ratingsCount || 0})</span>` :
+                    `<span class="no-rating">Нет отзывов</span>`}
+            </div>
+            <div class="product-actions">
+              <div class="cart-controls">
+                ${document.querySelector('[th\\:if="${isAuthenticated}"]') ?
+                    `<button class="add-to-cart" data-product-id="${product.id}">
+                    <i class="fas fa-cart-plus"></i> В корзину
+                  </button>` :
+                    `<div class="add-to-cart">
+                    <a href="/auth/login" style="color: white; text-decoration: none;">
+                      <i class="fas fa-cart-plus"></i> Войти, чтобы добавить
+                    </a>
+                  </div>`}
+              </div>
+              <button class="wishlist-btn">
+                <i class="far fa-heart"></i>
+              </button>
+            </div>
+          </div>
+        `;
+                productsContainer.appendChild(productCard);
+            });
+        }
+
+        function updatePagination(currentPage, totalPages) {
+            const pagination = document.querySelector('.pagination');
+            if (!pagination) return;
+            const category = categorySelect.value || '';
+            pagination.innerHTML = totalPages <= 1 ? '' : `
+        <a href="/products?page=${currentPage - 1}&search=${encodeURIComponent(searchInput.value)}&category=${encodeURIComponent(category)}"
+           class="${currentPage <= 0 ? 'disabled' : ''}" aria-label="Previous">«</a>
+        ${Array.from({length: totalPages}, (_, i) => `
+          <a href="/products?page=${i}&search=${encodeURIComponent(searchInput.value)}&category=${encodeURIComponent(category)}"
+             class="${i === currentPage ? 'active' : ''}">${i + 1}</a>
+        `).join('')}
+        <a href="/products?page=${currentPage + 1}&search=${encodeURIComponent(searchInput.value)}&category=${encodeURIComponent(category)}"
+           class="${currentPage >= totalPages - 1 ? 'disabled' : ''}" aria-label="Next">»</a>
+      `;
+        }
+
+        // Синхронизация категории при загрузке страницы
+        const urlParams = new URLSearchParams(window.location.search);
+        const selectedCategory = urlParams.get('category') || '';
+        if (selectedCategory) {
+            categorySelect.value = selectedCategory;
+        }
+    });
 </script>
 </body>
 </html>

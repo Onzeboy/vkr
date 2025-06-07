@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление пользователями - Premium Store</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+    <style>
+        :root {
+            --primary: #333333;
+            --primary-dark: #1a1a1a;
+            --accent: #666666;
+            --danger: #e63946;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --light-gray: #e9ecef;
+        }
+        body { padding-top: 4.5rem; }
+        .status-enabled { color: #10b981; font-weight: 600; }
+        .status-disabled { color: #ef4444; font-weight: 600; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .spinner { display: inline-block; width: 1rem; height: 1rem; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.75s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .toast { position: fixed; bottom: 1rem; right: 1rem; z-index: 2000; transition: all 0.3s ease; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0, 0, 0, 0.5); }
+        .modal-content { background-color: #fff; margin: 10% auto; padding: 2rem; border-radius: 0.5rem; width: 90%; max-width: 600px; }
+        @media (max-width: 768px) { .table-container { overflow-x: auto; } .user-card { flex-direction: column; align-items: flex-start; } }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+<header class="fixed top-0 left-0 w-full bg-white shadow-md border border-gray-200 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center py-3">
+        <a href="/admin/chat" class="flex items-center space-x-2 text-xl font-bold text-gray-800 hover:text-gray-600">
+            <i class="fas fa-headset text-gray-500"></i>
+            <span>Premium Store - Админ</span>
+        </a>
+        <div class="flex items-center space-x-4">
+            <a href="/admin/ticket-history" class="text-gray-600 hover:text-gray-800 font-medium">История тикетов</a>
+            <a href="/admin/users" class="text-gray-600 hover:text-gray-800 font-medium">Пользователи</a>
+            <a href="/logout" class="text-gray-600 hover:text-gray-800 font-medium flex items-center space-x-1">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Выйти</span>
+            </a>
+        </div>
+    </div>
+</header>
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="bg-white rounded-xl shadow-lg p-6" x-data="userManagement">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">Управление пользователями</h2>
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 space-y-4 sm:space-y-0 sm:space-x-4">
+            <input type="text" x-model="filters.email" @input.debounce.500ms="fetchUsers()"
+                   placeholder="Поиск по email..." class="w-full sm:w-1/3 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none">
+            <select x-model="filters.role" @change="fetchUsers()"
+                    class="w-full sm:w-1/4 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none">
+                <option value="">Все роли</option>
+                <option th:each="role : ${T(com.nzby.homeshop.POJO.Enum.Role).values()}" th:value="${role}" th:text="${role}"></option>
+            </select>
+        </div>
+        <div x-show="isLoading" class="text-center text-gray-500 py-8">Загрузка пользователей...</div>
+        <div x-show="!isLoading" class="table-container">
+            <table class="w-full border-collapse hidden sm:table">
+                <thead>
+                <tr class="bg-gray-50">
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">ID</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Email</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Роль</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Статус</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Дата создания</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Действия</th>
+                </tr>
+                </thead>
+                <tbody>
+                <template x-if="users.content && Array.isArray(users.content) && users.content.length">
+                    <template x-for="user in users.content" :key="user.id">
+                        <tr class="fade-in border-t border-gray-200 hover:bg-gray-50">
+                            <td class="px-4 py-3 text-sm text-gray-800" x-text="user.id"></td>
+                            <td class="px-4 py-3 text-sm text-gray-800" x-text="user.email"></td>
+                            <td class="px-4 py-3 text-sm text-gray-800" x-text="user.role"></td>
+                            <td class="px-4 py-3 text-sm">
+                                <span :class="user.enabled ? 'status-enabled' : 'status-disabled'"
+                                      x-text="user.enabled ? 'Включён' : 'Отключён'"></span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-800" x-text="new Date(user.createdAt).toLocaleString('ru-RU')"></td>
+                            <td class="px-4 py-3 text-sm">
+                                <div class="flex items-center space-x-2">
+                                    <button class="text-blue-600 hover:text-blue-800" @click="openEditModal(user)">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="text-red-600 hover:text-red-800" @click="deleteUser(user.id)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                </template>
+                <template x-if="!users.content || !Array.isArray(users.content) || !users.content.length">
+                    <tr>
+                        <td colspan="6" class="text-center text-gray-500 py-8">Пользователи не найдены.</td>
+                    </tr>
+                </template>
+                </tbody>
+            </table>
+            <div class="sm:hidden flex flex-col space-y-4">
+                <template x-if="users.content && Array.isArray(users.content) && users.content.length">
+                    <template x-for="user in users.content" :key="user.id">
+                        <div class="fade-in user-card bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <div class="flex justify-between items-center">
+                                <span class="font-semibold text-gray-800" x-text="'ID: ' + user.id"></span>
+                                <div class="flex items-center space-x-2">
+                                    <button class="text-blue-600 hover:text-blue-800" @click="openEditModal(user)">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="text-red-600 hover:text-red-800" @click="deleteUser(user.id)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="text-sm text-gray-600" x-text="'Email: ' + user.email"></div>
+                            <div class="text-sm text-gray-600" x-text="'Роль: ' + user.role"></div>
+                            <div class="text-sm">
+                                <span :class="user.enabled ? 'status-enabled' : 'status-disabled'"
+                                      x-text="'Статус: ' + (user.enabled ? 'Включён' : 'Отключён')"></span>
+                            </div>
+                            <div class="text-sm text-gray-600" x-text="'Создан: ' + new Date(user.createdAt).toLocaleString('ru-RU')"></div>
+                        </div>
+                    </template>
+                </template>
+                <template x-if="!users.content || !Array.isArray(users.content) || !users.content.length">
+                    <div class="text-center text-gray-500 py-8">Пользователи не найдены.</div>
+                </template>
+            </div>
+        </div>
+        <div class="flex justify-center mt-4" x-show="users.totalPages > 1 && !isLoading">
+            <button @click="fetchUsers(users.number - 1)" :disabled="users.number === 0"
+                    class="px-4 py-2 bg-gray-200 rounded-lg mx-1 disabled:opacity-50">Предыдущая</button>
+            <span class="px-4 py-2 text-gray-600" x-text="users.number + 1 + ' / ' + users.totalPages"></span>
+            <button @click="fetchUsers(users.number + 1)" :disabled="users.number >= users.totalPages - 1"
+                    class="px-4 py-2 bg-gray-200 rounded-lg mx-1 disabled:opacity-50">Следующая</button>
+        </div>
+        <div x-show="showToast" :class="toastType === 'success' ? 'bg-green-500' : 'bg-red-500'"
+             class="toast text-white px-4 py-2 rounded-lg shadow-lg">
+            <span x-text="toastMessage"></span>
+        </div>
+        <div x-show="showModal" class="modal" style="display: block;" x-cloak>
+            <div class="modal-content">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Редактировать пользователя</h3>
+                <div class="grid grid-cols-1 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Email (только просмотр)</label>
+                        <input type="email" x-model="editUser.email" disabled
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Роль</label>
+                        <select x-model="editUser.role"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none">
+                            <option th:each="role : ${T(com.nzby.homeshop.POJO.Enum.Role).values()}" th:value="${role}" th:text="${role}"></option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Статус</label>
+                        <select x-model="editUser.enabled"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none">
+                            <option value="true">Включён</option>
+                            <option value="false">Отключён</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end mt-6 space-x-2">
+                    <button class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg" @click="showModal = false">Отмена</button>
+                    <button class="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center space-x-2"
+                            @click="saveUser()" :disabled="isSaving">
+                        <span x-show="isSaving" class="spinner"></span>
+                        <span x-text="isSaving ? 'Сохранение...' : 'Сохранить'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('userManagement', () => ({
+            users: { content: [], number: 0, totalPages: 0 },
+            filters: { email: '', role: '' },
+            showToast: false,
+            toastMessage: '',
+            toastType: 'success',
+            showModal: false,
+            editUser: { id: null, email: '', role: '', enabled: false },
+            isSaving: false,
+            isLoading: true,
+            async fetchUsers(page = 0) {
+                try {
+                    this.isLoading = true;
+                    const params = new URLSearchParams({
+                        page: page.toString(),
+                        size: '10',
+                        ...(this.filters.email && { email: this.filters.email }),
+                        ...(this.filters.role && { role: this.filters.role })
+                    });
+                    const response = await fetch(`/admin/api/users?${params}`);
+                    if (!response.ok) {
+                        const error = await response.text();
+                        throw new Error(error || 'Ошибка загрузки пользователей');
+                    }
+                    const data = await response.json();
+                    console.log('API Response:', JSON.stringify(data, null, 2));
+                    if (!data || typeof data !== 'object' || !Array.isArray(data.content)) {
+                        throw new Error('Неверный формат данных: ожидается объект с полем content как массив');
+                    }
+                    this.users = {
+                        content: data.content.map(user => ({
+                            id: user.id,
+                            email: user.email,
+                            role: user.role,
+                            enabled: user.enabled,
+                            createdAt: user.createdAt
+                        })) || [],
+                        number: data.number || 0,
+                        totalPages: data.totalPages || 0
+                    };
+                    console.log('Processed users.content:', this.users.content);
+                } catch (error) {
+                    console.error('Fetch Error:', error.message);
+                    this.showToast = true;
+                    this.toastMessage = error.message || 'Ошибка загрузки пользователей';
+                    this.toastType = 'error';
+                    this.users = { content: [], number: 0, totalPages: 0 };
+                    setTimeout(() => this.showToast = false, 3000);
+                } finally {
+                    this.isLoading = false;
+                }
+            },
+            async openEditModal(user) {
+                this.editUser = { ...user };
+                this.showModal = true;
+            },
+            async saveUser() {
+                try {
+                    this.isSaving = true;
+                    const roleResponse = await fetch(`/admin/api/users/${this.editUser.id}/role`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ role: this.editUser.role })
+                    });
+                    if (!roleResponse.ok) {
+                        const error = await roleResponse.text();
+                        throw new Error(error || 'Ошибка обновления роли');
+                    }
+                    const enabledResponse = await fetch(`/admin/api/users/${this.editUser.id}/enabled`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ enabled: this.editUser.enabled })
+                    });
+                    if (!enabledResponse.ok) {
+                        const error = await enabledResponse.text();
+                        throw new Error(error || 'Ошибка обновления статуса');
+                    }
+                    this.showModal = false;
+                    await this.fetchUsers(this.users.number);
+                    this.showToast = true;
+                    this.toastMessage = 'Пользователь обновлён!';
+                    this.toastType = 'success';
+                    setTimeout(() => this.showToast = false, 3000);
+                } catch (error) {
+                    console.error('Save Error:', error.message);
+                    this.showToast = true;
+                    this.toastMessage = error.message || 'Ошибка сохранения пользователя';
+                    this.toastType = 'error';
+                    setTimeout(() => this.showToast = false, 3000);
+                } finally {
+                    this.isSaving = false;
+                }
+            },
+            async deleteUser(userId) {
+                if (!confirm(`Вы действительно хотите удалить пользователя ID ${userId}?`)) return;
+                try {
+                    const response = await fetch(`/admin/api/users/${userId}`, {
+                        method: 'DELETE'
+                    });
+                    if (!response.ok) {
+                        const error = await response.text();
+                        throw new Error(error || 'Ошибка удаления пользователя');
+                    }
+                    await this.fetchUsers(this.users.number);
+                    this.showToast = true;
+                    this.toastMessage = 'Пользователь удалён!';
+                    this.toastType = 'success';
+                    setTimeout(() => this.showToast = false, 3000);
+                } catch (error) {
+                    console.error('Delete Error:', error.message);
+                    this.showToast = true;
+                    this.toastMessage = error.message || 'Ошибка удаления пользователя';
+                    this.toastType = 'error';
+                    setTimeout(() => this.showToast = false, 3000);
+                }
+            },
+            init() {
+                this.fetchUsers();
+            }
+        }));
+    });
+</script>
+</body>
+</html>

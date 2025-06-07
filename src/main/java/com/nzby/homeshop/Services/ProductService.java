@@ -18,6 +18,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BindingResult;
@@ -55,7 +58,8 @@ public class ProductService {
     @Value("${app.upload.dir}")
     private String uploadDir;
 
-    private static final String UPLOAD_DIR = "src/main/resources/static/Uploads";
+
+    private static final int PAGE_SIZE = 9;
 
     @Transactional(readOnly = true)
     public List<Product> findAll() {
@@ -248,7 +252,7 @@ public class ProductService {
                 .orElseThrow(() -> new IllegalArgumentException("Продукт с ID " + productId + " не найден"));
         logger.info("Удаление продукта: {}", product.getName());
 
-        String productDir = Paths.get(UPLOAD_DIR, "products", String.valueOf(productId)).toString();
+        String productDir = Paths.get(uploadDir, "products", String.valueOf(productId)).toString();
         Path dirPath = Paths.get(productDir);
         try {
             if (Files.exists(dirPath)) {
@@ -423,5 +427,45 @@ public class ProductService {
     public Product getProductById(Long productId) {
         return productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
+    }
+
+
+    public Page<Product> findProducts(String search, String categoryId, int page) {
+        Pageable pageable = PageRequest.of(page, PAGE_SIZE);
+        Category category = null;
+        if (categoryId != null && !categoryId.trim().isEmpty()) {
+            try {
+                category = categoryRepository.findById(Long.valueOf(categoryId)).orElse(null);
+            } catch (NumberFormatException e) {
+                category = null;
+            }
+        }
+
+        if (search != null && !search.trim().isEmpty() && category != null) {
+            return productRepository.findByNameContainingIgnoreCaseAndCategory(search, category, pageable);
+        } else if (search != null && !search.trim().isEmpty()) {
+            return productRepository.findByNameContainingIgnoreCase(search, pageable);
+        } else if (category != null) {
+            return productRepository.findByCategory(category, pageable);
+        } else {
+            return productRepository.findAll(pageable);
+        }
+    }
+
+    public Page<Product> searchProducts(String search, Long categoryId, Pageable pageable) {
+        String searchTerm = search != null && !search.isBlank() ? search.toLowerCase() : null;
+        return productRepository.searchProducts(searchTerm, categoryId, pageable);
+    }
+
+    public List<Category> findAllCategories() {
+        return categoryRepository.findAll();
+    }
+    public Map<Long, Integer> getStock() {
+        return productRepository.findAll()
+                .stream()
+                .collect(Collectors.toMap(
+                        Product::getId,
+                        product -> product.getStock() != null ? product.getStock() : 0
+                ));
     }
 }

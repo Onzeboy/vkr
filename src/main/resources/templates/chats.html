@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Store - Поддержка</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #333333;
+            --primary-dark: #1a1a1a;
+            --accent: #666666;
+            --danger: #e63946;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --light-gray: #e9ecef;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            background-color: var(--light);
+        }
+
+        header {
+            background-color: white;
+            padding: 1rem 0;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .logo i {
+            color: var(--accent);
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .header-nav a {
+            text-decoration: none;
+            color: var(--dark);
+            font-weight: 500;
+            position: relative;
+            padding: 0.5rem 0;
+            transition: var(--transition);
+        }
+
+        .header-nav a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--primary);
+            transition: var(--transition);
+        }
+
+        .header-nav a:hover::after {
+            width: 100%;
+        }
+
+        .header-nav a:hover {
+            color: var(--primary);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .header-actions a {
+            text-decoration: none;
+            color: var(--dark);
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .header-actions a:hover {
+            color: var(--primary);
+        }
+
+        .cart-btn {
+            position: relative;
+        }
+
+        .cart-count {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background-color: var(--danger);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+        }
+
+        .main-content {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            display: flex;
+            gap: 2rem;
+            align-items: flex-start;
+        }
+
+        .tickets-container {
+            width: 300px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .tickets-header {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .ticket-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .ticket-item {
+            padding: 0.8rem;
+            border-bottom: 1px solid var(--light-gray);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .ticket-item:hover {
+            background-color: var(--light-gray);
+        }
+
+        .ticket-item.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .ticket-id {
+            font-weight: 600;
+        }
+
+        .ticket-date {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
+        .ticket-status {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--accent);
+        }
+
+        .ticket-status.OPEN {
+            color: #28a745;
+        }
+
+        .ticket-status.IN_PROGRESS {
+            color: #ffc107;
+        }
+
+        .ticket-status.CLOSED {
+            color: var(--danger);
+        }
+
+        .create-ticket-btn {
+            background-color: var(--primary);
+            color: white;
+            padding: 0.8rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 1rem;
+            transition: var(--transition);
+        }
+
+        .create-ticket-btn:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .create-ticket-btn:disabled {
+            background-color: var(--light-gray);
+            cursor: not-allowed;
+        }
+
+        .chat-container {
+            flex: 1;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 1.5rem;
+            display: none;
+        }
+
+        .chat-container.active {
+            display: block;
+        }
+
+        .chat-header {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .chat-messages {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--light-gray);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .chat-message {
+            margin-bottom: 1rem;
+            padding: 0.8rem;
+            border-radius: 8px;
+            max-width: 70%;
+        }
+
+        .chat-message.sent {
+            background-color: var(--primary);
+            color: white;
+            margin-left: auto;
+        }
+
+        .chat-message.admin-sent {
+            background-color: var(--accent);
+            color: white;
+            margin-right: auto;
+            border: 2px solid var(--primary-dark);
+        }
+
+        .chat-message.received {
+            background-color: var(--light-gray);
+            color: var(--dark);
+            margin-right: auto;
+        }
+
+        .chat-message .message-content {
+            font-size: 1rem;
+        }
+
+        .chat-message .message-meta {
+            font-size: 0.8rem;
+            color: var(--gray);
+            margin-top: 0.3rem;
+        }
+
+        .chat-message .message-images {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .chat-message .message-image {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid var(--light-gray);
+            transition: var(--transition);
+        }
+
+        .chat-message .message-image:hover {
+            transform: scale(1.05);
+            border-color: var(--primary);
+        }
+
+        .chat-input-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 0.8rem;
+            border: 1px solid var(--light-gray);
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .chat-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 5px rgba(51, 51, 51, 0.2);
+        }
+
+        .chat-file-input {
+            padding: 0.8rem;
+            border: 1px dashed var(--light-gray);
+            border-radius: 8px;
+            font-size: 1rem;
+            background-color: white;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .chat-file-input:hover {
+            border-color: var(--primary);
+            background-color: var(--light-gray);
+        }
+
+        .image-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .image-preview-item {
+            position: relative;
+            width: 80px;
+            height: 80px;
+        }
+
+        .image-preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .image-preview-item .remove-image {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .chat-send-btn {
+            background-color: var(--primary);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-weight: 500;
+            align-self: flex-end;
+            width: fit-content;
+        }
+
+        .chat-send-btn:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        .modal-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90vh;
+            margin-top: 5vh;
+            border-radius: 8px;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .modal-close:hover,
+        .modal-close:focus {
+            color: #bbb;
+            text-decoration: none;
+        }
+
+        @media (max-width: 768px) {
+            .header-container {
+                flex-direction: column;
+                gap: 1rem;
+                padding: 1rem;
+            }
+
+            .header-nav {
+                gap: 1rem;
+            }
+
+            .main-content {
+                flex-direction: column;
+            }
+
+            .tickets-container {
+                width: 100%;
+            }
+
+            .chat-container {
+                padding: 1rem;
+            }
+
+            .chat-messages {
+                height: 300px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-nav {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .chat-input-container {
+                gap: 0.5rem;
+            }
+
+            .chat-send-btn {
+                width: 100%;
+            }
+
+            .chat-file-input {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div class="header-container">
+        <a href="/" class="logo">
+            <i class="fas fa-store"></i>
+            <span>Premium Store</span>
+        </a>
+        <nav class="header-nav">
+            <a href="/products">Товары</a>
+            <a href="#">Продукты</a>
+            <a href="#">Новинки</a>
+            <a href="/chat">Поддержка</a>
+            <a href="#delivery">Доставка</a>
+            <a href="#contacts">Контакты</a>
+        </nav>
+        <div class="header-actions">
+            <a th:href="@{/auth/login}" th:if="${!isAuthenticated}">
+                <i class="fas fa-user"></i> Войти
+            </a>
+            <a th:href="@{/auth/logout}" th:if="${isAuthenticated}">
+                <i class="fas fa-sign-out-alt"></i> Выйти
+            </a>
+            <a href="/cart" class="cart-btn">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-count" th:text="${cartCount}">0</span>
+            </a>
+        </div>
+    </div>
+</header>
+
+<main class="main-content">
+    <div class="tickets-container">
+        <h2 class="tickets-header">Мои заявки</h2>
+        <button class="create-ticket-btn" id="createTicketBtn">Создать новую заявку</button>
+        <div class="ticket-list" id="ticketList"></div>
+    </div>
+    <div class="chat-container" id="chatContainer">
+        <h2 class="chat-header">Чат с поддержкой</h2>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-container">
+            <div class="image-preview" id="filePreview"></div>
+            <input type="text" id="messageInput" class="chat-input" placeholder="Введите ваше сообщение...">
+            <label for="fileInput" class="chat-file-input">
+                <i class="fas fa-paperclip"></i> Прикрепить фото
+            </label>
+            <input type="file" id="fileInput" class="chat-file-input" accept="image/*" multiple style="display: none;">
+            <button id="sendButton" class="chat-send-btn">Отправить</button>
+        </div>
+    </div>
+</main>
+
+<div id="imageModal" class="modal">
+    <span class="modal-close" onclick="closeModal()">×</span>
+    <img class="modal-content" id="modalImage">
+</div>
+
+<script th:inline="javascript">
+    const currentUserEmail = /*[[${currentUserEmail}]]*/ null;
+    let currentTicketId = null;
+    let currentTicketStatus = null;
+    let selectedFiles = new DataTransfer();
+
+    // Utility function for fetch with error handling
+    function fetchWithErrorHandling(url, options = {}) {
+        const isFormData = options.body instanceof FormData;
+        const headers = isFormData ? {
+            'Authorization': 'Bearer ' + localStorage.getItem('token'),
+            ...options.headers
+        } : {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + localStorage.getItem('token'),
+            ...options.headers
+        };
+
+        if (options.method && options.method.toUpperCase() === 'GET') {
+            delete options.body;
+        }
+
+        return fetch(url, {
+            ...options,
+            body: isFormData ? options.body : (options.body ? JSON.stringify(options.body) : undefined),
+            headers: headers
+        })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`HTTP error: ${response.status} - ${text || response.statusText}`);
+                    });
+                }
+                return response.json();
+            })
+            .catch(error => {
+                console.error(`Error fetching ${url}:`, error);
+                throw error;
+            });
+    }
+
+    // Create a new ticket
+    function createTicket() {
+        fetchWithErrorHandling('/api/chat/tickets', {
+            method: 'POST'
+        })
+            .then(ticket => {
+                if (ticket && ticket.id) {
+                    loadTickets();
+                    selectTicket(ticket.id);
+                } else if (typeof ticket === 'string' && ticket.includes('не закрытая заявка')) {
+                    alert(ticket);
+                } else {
+                    throw new Error('Invalid ticket response');
+                }
+            })
+            .catch(error => {
+                console.error('Error creating ticket:', error);
+                alert(`Ошибка создания заявки: ${error.message}`);
+            });
+    }
+
+    // Load ticket list
+    function loadTickets() {
+        fetchWithErrorHandling('/api/chat/tickets', { method: 'GET' })
+            .then(tickets => {
+                const ticketList = document.getElementById('ticketList');
+                ticketList.innerHTML = '';
+                if (Array.isArray(tickets)) {
+                    tickets.forEach(ticket => {
+                        const ticketItem = document.createElement('div');
+                        ticketItem.className = 'ticket-item';
+                        ticketItem.dataset.ticketId = ticket.id;
+                        ticketItem.dataset.ticketStatus = ticket.status;
+                        ticketItem.innerHTML = `
+                            <div class="ticket-id">Заявка #${ticket.id}</div>
+                            <div class="ticket-date">${new Date(ticket.createdAt).toLocaleDateString()}</div>
+                            <div class="ticket-status ${ticket.status.toLowerCase()}">${ticket.status}</div>
+                        `;
+                        ticketItem.addEventListener('click', () => selectTicket(ticket.id));
+                        ticketList.appendChild(ticketItem);
+                    });
+                    updateCreateButtonState(tickets);
+                } else {
+                    throw new Error('Response is not an array');
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при загрузке заявок:', error);
+                document.getElementById('ticketList').innerHTML = '<p>Ошибка загрузки заявок. Попробуйте позже.</p>';
+            });
+    }
+
+    // Update create ticket button state
+    function updateCreateButtonState(tickets) {
+        const createButton = document.getElementById('createTicketBtn');
+        const hasOpenTicket = tickets.some(t => t.status !== 'CLOSED');
+        createButton.disabled = hasOpenTicket;
+    }
+
+    // Select a ticket
+    function selectTicket(ticketId) {
+        currentTicketId = ticketId;
+        const ticketItem = document.querySelector(`.ticket-item[data-ticket-id="${ticketId}"]`);
+        currentTicketStatus = ticketItem ? ticketItem.dataset.ticketStatus : null;
+        document.querySelectorAll('.ticket-item').forEach(item => {
+            item.classList.toggle('active', item.dataset.ticketId == ticketId);
+        });
+        document.getElementById('chatContainer').classList.add('active');
+        document.getElementById('sendButton').disabled = currentTicketStatus === 'CLOSED';
+        document.getElementById('fileInput').disabled = currentTicketStatus === 'CLOSED';
+        loadChatHistory(ticketId);
+    }
+
+    // Load chat history
+    function loadChatHistory(ticketId) {
+        fetchWithErrorHandling(`/api/chat/history/${ticketId}`, { method: 'GET' })
+            .then(messages => {
+                const chatMessages = document.getElementById('chatMessages');
+                chatMessages.innerHTML = '';
+                if (Array.isArray(messages)) {
+                    messages.forEach(message => showMessage(message));
+                } else {
+                    throw new Error('Response is not an array');
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при загрузке истории чата:', error);
+                document.getElementById('chatMessages').innerHTML = '<p>Ошибка загрузки сообщений. Попробуйте позже.</p>';
+            });
+    }
+
+    // Display a message
+    function showMessage(message) {
+        const chatMessages = document.getElementById('chatMessages');
+        const messageElement = document.createElement('div');
+
+        let messageClass;
+        if (message.status === 'ADMIN_SENT') {
+            messageClass = 'admin-sent';
+        } else if (message.status === 'SENT') {
+            messageClass = 'sent';
+        } else {
+            messageClass = 'received';
+        }
+
+        messageElement.className = `chat-message ${messageClass}`;
+
+        let imagesHtml = '';
+        if (message.images && message.images.length > 0) {
+            imagesHtml = `<div class="message-images">`;
+            message.images.forEach((image, index) => {
+                imagesHtml += `<img src="/uploaded-images/${image.filePath}" class="message-image" data-modal-src="/uploaded-images/${image.filePath}?v=1" alt="Фото сообщения">`;
+            });
+            imagesHtml += `</div>`;
+        }
+
+        messageElement.innerHTML = `
+            <div class="message-content">${message.content || 'Нет содержимого'}</div>
+            ${imagesHtml}
+            <div class="message-meta">${message.status === 'ADMIN_SENT' ? 'Админ' : 'Пользователь'} • ${new Date(message.timestamp).toLocaleString()}</div>
+        `;
+        chatMessages.appendChild(messageElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // Add handler for opening modal
+        const images = messageElement.querySelectorAll('.message-image');
+        images.forEach(image => {
+            image.addEventListener('click', function() {
+                openModal(this.getAttribute('data-modal-src'));
+            });
+        });
+    }
+
+    // Send a message with files
+    function sendMessage() {
+        if (!currentTicketId) {
+            alert('Выберите или создайте заявку');
+            return;
+        }
+
+        const messageContent = document.getElementById('messageInput').value;
+
+        if (!messageContent && selectedFiles.files.length === 0) {
+            alert('Сообщение или фото не выбрано');
+            return;
+        }
+
+        if (selectedFiles.files.length > 2) {
+            alert('Можно прикрепить не более 2 фотографий');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('ticketId', currentTicketId);
+        formData.append('content', messageContent);
+        for (let i = 0; i < selectedFiles.files.length; i++) {
+            formData.append('files', selectedFiles.files[i]);
+        }
+
+        fetchWithErrorHandling('/api/chat/send', {
+            method: 'POST',
+            body: formData
+        })
+            .then(savedMessage => {
+                if (savedMessage && savedMessage.id) {
+                    // Reload chat history to show the new message and images
+                    loadChatHistory(currentTicketId);
+                    document.getElementById('messageInput').value = '';
+                    selectedFiles = new DataTransfer();
+                    document.getElementById('filePreview').innerHTML = '';
+                } else {
+                    throw new Error('Invalid message response');
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка отправки сообщения:', error);
+                alert(`Ошибка отправки сообщения: ${error.message}`);
+            });
+    }
+
+    // Preview and manage files when selected
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const filePreview = document.getElementById('filePreview');
+        const files = e.target.files;
+
+        if (selectedFiles.files.length + files.length > 2) {
+            alert('Можно прикрепить не более 2 фотографий');
+            this.value = '';
+            return;
+        }
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (file.type.startsWith('image/')) {
+                selectedFiles.items.add(file);
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const previewItem = document.createElement('div');
+                    previewItem.className = 'image-preview-item';
+                    previewItem.innerHTML = `
+                        <img src="${e.target.result}" alt="Preview">
+                        <button class="remove-image" onclick="removeImage(this, '${file.name}')">×</button>
+                    `;
+                    filePreview.appendChild(previewItem);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        this.value = ''; // Clear the input to allow re-selection
+    });
+
+    // Remove file from preview and DataTransfer
+    function removeImage(button, fileName) {
+        const filePreview = document.getElementById('filePreview');
+        const previewItem = button.parentElement;
+        const dt = new DataTransfer();
+
+        // Rebuild DataTransfer with remaining files
+        for (let i = 0; i < selectedFiles.files.length; i++) {
+            if (selectedFiles.files[i].name !== fileName) {
+                dt.items.add(selectedFiles.files[i]);
+            }
+        }
+        selectedFiles = dt;
+
+        // Remove the preview item
+        filePreview.removeChild(previewItem);
+    }
+
+    // Polling for updates
+    function startPolling() {
+        loadTickets();
+        setInterval(() => {
+            loadTickets();
+            if (currentTicketId) {
+                loadChatHistory(currentTicketId);
+            }
+        }, 30000);
+    }
+
+    // Modal functions
+    function openModal(imageSrc) {
+        const modal = document.getElementById('imageModal');
+        const modalImg = document.getElementById('modalImage');
+        if (modal && modalImg) {
+            modal.style.display = 'block';
+            modalImg.src = imageSrc;
+        }
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('imageModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('imageModal');
+        if (event.target === modal) {
+            closeModal();
+        }
+    };
+
+    // Initialization
+    document.addEventListener('DOMContentLoaded', function() {
+        startPolling();
+
+        document.getElementById('createTicketBtn').addEventListener('click', createTicket);
+        document.getElementById('sendButton').addEventListener('click', sendMessage);
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+    });
+</script>
+</body>
+</html>
