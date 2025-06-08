@@ -6,7 +6,6 @@
     <title>Управление пользователями - Premium Store</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
     <style>
         :root {
             --primary: #333333;
@@ -23,10 +22,8 @@
         .status-disabled { color: #ef4444; font-weight: 600; }
         .fade-in { animation: fadeIn 0.5s ease-in; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .spinner { display: inline-block; width: 1rem; height: 1rem; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.75s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .toast { position: fixed; bottom: 1rem; right: 1rem; z-index: 2000; transition: all 0.3s ease; }
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0, 0, 0, 0.5); }
+        .toast { position: fixed; bottom: 1rem; right: 1rem; z-index: 1000; transition: all 0.3s ease; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
         .modal-content { background-color: #fff; margin: 10% auto; padding: 2rem; border-radius: 0.5rem; width: 90%; max-width: 600px; }
         @media (max-width: 768px) { .table-container { overflow-x: auto; } .user-card { flex-direction: column; align-items: flex-start; } }
     </style>
@@ -49,23 +46,39 @@
     </div>
 </header>
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="bg-white rounded-xl shadow-lg p-6" x-data="userManagement">
+    <div class="bg-white rounded-xl shadow-lg p-6">
         <h2 class="text-2xl font-bold text-gray-800 mb-6">Управление пользователями</h2>
-        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 space-y-4 sm:space-y-0 sm:space-x-4">
-            <input type="text" x-model="filters.email" @input.debounce.500ms="fetchUsers()"
-                   placeholder="Поиск по email..." class="w-full sm:w-1/3 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none">
-            <select x-model="filters.role" @change="fetchUsers()"
+
+        <!-- Сообщения об успехе или ошибке -->
+        <div th:if="${message}" class="toast bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg mb-4">
+            <span th:text="${message}"></span>
+        </div>
+        <div th:if="${error}" class="toast bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg mb-4">
+            <span th:text="${error}"></span>
+        </div>
+
+        <!-- Фильтры -->
+        <form id="filterForm" th:action="@{/admin/users}" method="get" class="flex flex-col sm:flex-row justify-between items-center mb-6 space-y-4 sm:space-y-0 sm:space-x-4">
+            <input type="text" name="email" id="emailFilter" th:value="${emailFilter}" placeholder="Поиск по email..."
+                   oninput="debouncedSubmit()"
+                   class="w-full sm:w-1/3 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none">
+            <select name="role" id="roleFilter" onchange="submitForm()"
                     class="w-full sm:w-1/4 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none">
                 <option value="">Все роли</option>
-                <option th:each="role : ${T(com.nzby.homeshop.POJO.Enum.Role).values()}" th:value="${role}" th:text="${role}"></option>
+                <option th:each="role : ${roles}" th:value="${role}" th:text="${role}" th:selected="${roleFilter == role.toString()}"></option>
             </select>
-        </div>
-        <div x-show="isLoading" class="text-center text-gray-500 py-8">Загрузка пользователей...</div>
-        <div x-show="!isLoading" class="table-container">
-            <table class="w-full border-collapse hidden sm:table">
+        </form>
+
+        <!-- Таблица пользователей -->
+        <div class="table-container">
+            <p class="mb-4 text-gray-600">Количество пользователей: <span th:text="${totalElements}"></span></p>
+            <table class="w-full border-collapse table-auto">
                 <thead>
                 <tr class="bg-gray-50">
                     <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">ID</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Имя</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Фамилия</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Номер телефона</th>
                     <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Email</th>
                     <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Роль</th>
                     <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Статус</th>
@@ -74,238 +87,161 @@
                 </tr>
                 </thead>
                 <tbody>
-                <template x-if="users.content && Array.isArray(users.content) && users.content.length">
-                    <template x-for="user in users.content" :key="user.id">
-                        <tr class="fade-in border-t border-gray-200 hover:bg-gray-50">
-                            <td class="px-4 py-3 text-sm text-gray-800" x-text="user.id"></td>
-                            <td class="px-4 py-3 text-sm text-gray-800" x-text="user.email"></td>
-                            <td class="px-4 py-3 text-sm text-gray-800" x-text="user.role"></td>
-                            <td class="px-4 py-3 text-sm">
-                                <span :class="user.enabled ? 'status-enabled' : 'status-disabled'"
-                                      x-text="user.enabled ? 'Включён' : 'Отключён'"></span>
-                            </td>
-                            <td class="px-4 py-3 text-sm text-gray-800" x-text="new Date(user.createdAt).toLocaleString('ru-RU')"></td>
-                            <td class="px-4 py-3 text-sm">
-                                <div class="flex items-center space-x-2">
-                                    <button class="text-blue-600 hover:text-blue-800" @click="openEditModal(user)">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="text-red-600 hover:text-red-800" @click="deleteUser(user.id)">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    </template>
-                </template>
-                <template x-if="!users.content || !Array.isArray(users.content) || !users.content.length">
-                    <tr>
-                        <td colspan="6" class="text-center text-gray-500 py-8">Пользователи не найдены.</td>
-                    </tr>
-                </template>
+                <tr th:each="user : ${users}" class="fade-in border-t border-gray-200 hover:bg-gray-50">
+                    <td class="px-4 py-3 text-sm text-gray-800" th:text="${user.id}"></td>
+                    <td class="px-4 py-3 text-sm text-gray-800" th:text="${user.name} ?: 'N/A'"></td>
+                    <td class="px-4 py-3 text-sm text-gray-800" th:text="${user.surname} ?: 'N/A'"></td>
+                    <td class="px-4 py-3 text-sm text-gray-800" th:text="${user.phoneNumber} ?: 'N/A'"></td>
+                    <td class="px-4 py-3 text-sm text-gray-800" th:text="${user.email} ?: 'N/A'"></td>
+                    <td class="px-4 py-3 text-sm text-gray-800" th:text="${user.role} ?: 'N/A'"></td>
+                    <td class="px-4 py-3 text-sm">
+                        <span th:class="${user.enabled} ? 'status-enabled' : 'status-disabled'"
+                              th:text="${user.enabled} ? 'Включён' : 'Отключён'"></span>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-800" th:text="${user.createdAt != null} ? ${user.createdAt.toString()} : 'N/A'"></td>
+                    <td class="px-4 py-3 text-sm">
+                        <div class="flex items-center space-x-2">
+                            <button class="text-blue-600 hover:text-blue-800" onclick="openEditModal(this)"
+                                    th:attr="data-id=${user.id}, data-email=${user.email}, data-role=${user.role}, data-enabled=${user.enabled}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                <tr th:if="${users.empty}">
+                    <td colspan="9" class="text-center text-gray-500 py-8">Пользователи не найдены.</td>
+                </tr>
                 </tbody>
             </table>
-            <div class="sm:hidden flex flex-col space-y-4">
-                <template x-if="users.content && Array.isArray(users.content) && users.content.length">
-                    <template x-for="user in users.content" :key="user.id">
-                        <div class="fade-in user-card bg-gray-50 p-4 rounded-lg border border-gray-200">
-                            <div class="flex justify-between items-center">
-                                <span class="font-semibold text-gray-800" x-text="'ID: ' + user.id"></span>
-                                <div class="flex items-center space-x-2">
-                                    <button class="text-blue-600 hover:text-blue-800" @click="openEditModal(user)">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="text-red-600 hover:text-red-800" @click="deleteUser(user.id)">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="text-sm text-gray-600" x-text="'Email: ' + user.email"></div>
-                            <div class="text-sm text-gray-600" x-text="'Роль: ' + user.role"></div>
-                            <div class="text-sm">
-                                <span :class="user.enabled ? 'status-enabled' : 'status-disabled'"
-                                      x-text="'Статус: ' + (user.enabled ? 'Включён' : 'Отключён')"></span>
-                            </div>
-                            <div class="text-sm text-gray-600" x-text="'Создан: ' + new Date(user.createdAt).toLocaleString('ru-RU')"></div>
+
+            <!-- Карточки для мобильных -->
+            <div class="sm:hidden flex flex-col space-y-4 mt-4">
+                <div th:each="user : ${users}" class="fade-in user-card bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold text-gray-800" th:text="'ID: ' + ${user.id}"></span>
+                        <div class="flex items-center space-x-2">
+                            <button class="text-blue-600 hover:text-blue-800" onclick="openEditModal(this)"
+                                    th:attr="data-id=${user.id}, data-email=${user.email}, data-role=${user.role}, data-enabled=${user.enabled}">
+                                <i class="fas fa-edit"></i>
+                            </button>
                         </div>
-                    </template>
-                </template>
-                <template x-if="!users.content || !Array.isArray(users.content) || !users.content.length">
-                    <div class="text-center text-gray-500 py-8">Пользователи не найдены.</div>
-                </template>
+                    </div>
+                    <div class="text-sm text-gray-600" th:text="'Имя: ' + (${user.name} ?: 'N/A')"></div>
+                    <div class="text-sm text-gray-600" th:text="'Фамилия: ' + (${user.surname} ?: 'N/A')"></div>
+                    <div class="text-sm text-gray-600" th:text="'Номер телефона: ' + (${user.phoneNumber} ?: 'N/A')"></div>
+                    <div class="text-sm text-gray-600" th:text="'Email: ' + (${user.email} ?: 'N/A')"></div>
+                    <div class="text-sm text-gray-600" th:text="'Роль: ' + (${user.role} ?: 'N/A')"></div>
+                    <div class="text-sm">
+                        <span th:class="${user.enabled} ? 'status-enabled' : 'status-disabled'"
+                              th:text="'Статус: ' + (${user.enabled} ? 'Включён' : 'Отключён')"></span>
+                    </div>
+                    <div class="text-sm text-gray-600" th:text="'Создан: ' + (${user.createdAt != null} ? ${user.createdAt.toString()} : 'N/A')"></div>
+                </div>
+                <div th:if="${users.empty}" class="text-center text-gray-500 py-8">Пользователи не найдены.</div>
             </div>
         </div>
-        <div class="flex justify-center mt-4" x-show="users.totalPages > 1 && !isLoading">
-            <button @click="fetchUsers(users.number - 1)" :disabled="users.number === 0"
-                    class="px-4 py-2 bg-gray-200 rounded-lg mx-1 disabled:opacity-50">Предыдущая</button>
-            <span class="px-4 py-2 text-gray-600" x-text="users.number + 1 + ' / ' + users.totalPages"></span>
-            <button @click="fetchUsers(users.number + 1)" :disabled="users.number >= users.totalPages - 1"
-                    class="px-4 py-2 bg-gray-200 rounded-lg mx-1 disabled:opacity-50">Следующая</button>
+
+        <!-- Пагинация -->
+        <div class="flex justify-center mt-4" th:if="${totalPages > 1}">
+            <a th:href="@{/admin/users(page=${currentPage - 1}, email=${emailFilter}, role=${roleFilter})}"
+               th:class="${currentPage == 0} ? 'px-4 py-2 bg-gray-200 rounded-lg mx-1 opacity-50 pointer-events-none' : 'px-4 py-2 bg-gray-200 rounded-lg mx-1'"
+               th:text="'Предыдущая'"></a>
+            <span class="px-4 py-2 text-gray-600" th:text="${currentPage + 1} + ' / ' + ${totalPages}"></span>
+            <a th:href="@{/admin/users(page=${currentPage + 1}, email=${emailFilter}, role=${roleFilter})}"
+               th:class="${currentPage >= totalPages - 1} ? 'px-4 py-2 bg-gray-200 rounded-lg mx-1 opacity-50 pointer-events-none' : 'px-4 py-2 bg-gray-200 rounded-lg mx-1'"
+               th:text="'Следующая'"></a>
         </div>
-        <div x-show="showToast" :class="toastType === 'success' ? 'bg-green-500' : 'bg-red-500'"
-             class="toast text-white px-4 py-2 rounded-lg shadow-lg">
-            <span x-text="toastMessage"></span>
-        </div>
-        <div x-show="showModal" class="modal" style="display: block;" x-cloak>
+
+        <!-- Модальное окно -->
+        <div id="editModal" class="modal">
             <div class="modal-content">
                 <h3 class="text-xl font-bold text-gray-800 mb-4">Редактировать пользователя</h3>
-                <div class="grid grid-cols-1 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Email (только просмотр)</label>
-                        <input type="email" x-model="editUser.email" disabled
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100">
+                <form id="editForm" method="post">
+                    <input type="hidden" name="id" id="editId">
+                    <div class="grid grid-cols-1 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Email (только просмотр)</label>
+                            <input type="email" id="editEmail" disabled
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Роль</label>
+                            <select name="role" id="editRole"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none">
+                                <option th:each="role : ${roles}" th:value="${role}" th:text="${role}"></option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Статус</label>
+                            <select name="enabled" id="editEnabled"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none">
+                                <option value="true">Включён</option>
+                                <option value="false">Отключён</option>
+                            </select>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Роль</label>
-                        <select x-model="editUser.role"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none">
-                            <option th:each="role : ${T(com.nzby.homeshop.POJO.Enum.Role).values()}" th:value="${role}" th:text="${role}"></option>
-                        </select>
+                    <div class="flex justify-end mt-6 space-x-2">
+                        <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg">Отмена</button>
+                        <button type="submit" formaction="/admin/users/0/role" id="saveRoleBtn"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg">Сохранить роль</button>
+                        <button type="submit" formaction="/admin/users/0/enabled" id="saveEnabledBtn"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg">Сохранить статус</button>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Статус</label>
-                        <select x-model="editUser.enabled"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none">
-                            <option value="true">Включён</option>
-                            <option value="false">Отключён</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="flex justify-end mt-6 space-x-2">
-                    <button class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg" @click="showModal = false">Отмена</button>
-                    <button class="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center space-x-2"
-                            @click="saveUser()" :disabled="isSaving">
-                        <span x-show="isSaving" class="spinner"></span>
-                        <span x-text="isSaving ? 'Сохранение...' : 'Сохранить'"></span>
-                    </button>
-                </div>
+                </form>
             </div>
         </div>
     </div>
 </main>
 <script>
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('userManagement', () => ({
-            users: { content: [], number: 0, totalPages: 0 },
-            filters: { email: '', role: '' },
-            showToast: false,
-            toastMessage: '',
-            toastType: 'success',
-            showModal: false,
-            editUser: { id: null, email: '', role: '', enabled: false },
-            isSaving: false,
-            isLoading: true,
-            async fetchUsers(page = 0) {
-                try {
-                    this.isLoading = true;
-                    const params = new URLSearchParams({
-                        page: page.toString(),
-                        size: '10',
-                        ...(this.filters.email && { email: this.filters.email }),
-                        ...(this.filters.role && { role: this.filters.role })
-                    });
-                    const response = await fetch(`/admin/api/users?${params}`);
-                    if (!response.ok) {
-                        const error = await response.text();
-                        throw new Error(error || 'Ошибка загрузки пользователей');
-                    }
-                    const data = await response.json();
-                    console.log('API Response:', JSON.stringify(data, null, 2));
-                    if (!data || typeof data !== 'object' || !Array.isArray(data.content)) {
-                        throw new Error('Неверный формат данных: ожидается объект с полем content как массив');
-                    }
-                    this.users = {
-                        content: data.content.map(user => ({
-                            id: user.id,
-                            email: user.email,
-                            role: user.role,
-                            enabled: user.enabled,
-                            createdAt: user.createdAt
-                        })) || [],
-                        number: data.number || 0,
-                        totalPages: data.totalPages || 0
-                    };
-                    console.log('Processed users.content:', this.users.content);
-                } catch (error) {
-                    console.error('Fetch Error:', error.message);
-                    this.showToast = true;
-                    this.toastMessage = error.message || 'Ошибка загрузки пользователей';
-                    this.toastType = 'error';
-                    this.users = { content: [], number: 0, totalPages: 0 };
-                    setTimeout(() => this.showToast = false, 3000);
-                } finally {
-                    this.isLoading = false;
-                }
-            },
-            async openEditModal(user) {
-                this.editUser = { ...user };
-                this.showModal = true;
-            },
-            async saveUser() {
-                try {
-                    this.isSaving = true;
-                    const roleResponse = await fetch(`/admin/api/users/${this.editUser.id}/role`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ role: this.editUser.role })
-                    });
-                    if (!roleResponse.ok) {
-                        const error = await roleResponse.text();
-                        throw new Error(error || 'Ошибка обновления роли');
-                    }
-                    const enabledResponse = await fetch(`/admin/api/users/${this.editUser.id}/enabled`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ enabled: this.editUser.enabled })
-                    });
-                    if (!enabledResponse.ok) {
-                        const error = await enabledResponse.text();
-                        throw new Error(error || 'Ошибка обновления статуса');
-                    }
-                    this.showModal = false;
-                    await this.fetchUsers(this.users.number);
-                    this.showToast = true;
-                    this.toastMessage = 'Пользователь обновлён!';
-                    this.toastType = 'success';
-                    setTimeout(() => this.showToast = false, 3000);
-                } catch (error) {
-                    console.error('Save Error:', error.message);
-                    this.showToast = true;
-                    this.toastMessage = error.message || 'Ошибка сохранения пользователя';
-                    this.toastType = 'error';
-                    setTimeout(() => this.showToast = false, 3000);
-                } finally {
-                    this.isSaving = false;
-                }
-            },
-            async deleteUser(userId) {
-                if (!confirm(`Вы действительно хотите удалить пользователя ID ${userId}?`)) return;
-                try {
-                    const response = await fetch(`/admin/api/users/${userId}`, {
-                        method: 'DELETE'
-                    });
-                    if (!response.ok) {
-                        const error = await response.text();
-                        throw new Error(error || 'Ошибка удаления пользователя');
-                    }
-                    await this.fetchUsers(this.users.number);
-                    this.showToast = true;
-                    this.toastMessage = 'Пользователь удалён!';
-                    this.toastType = 'success';
-                    setTimeout(() => this.showToast = false, 3000);
-                } catch (error) {
-                    console.error('Delete Error:', error.message);
-                    this.showToast = true;
-                    this.toastMessage = error.message || 'Ошибка удаления пользователя';
-                    this.toastType = 'error';
-                    setTimeout(() => this.showToast = false, 3000);
-                }
-            },
-            init() {
-                this.fetchUsers();
-            }
-        }));
-    });
+    function openEditModal(button) {
+        const modal = document.getElementById('editModal');
+        const form = document.getElementById('editForm');
+        const id = button.getAttribute('data-id');
+        const email = button.getAttribute('data-email');
+        const role = button.getAttribute('data-role');
+        const enabled = button.getAttribute('data-enabled');
+
+        document.getElementById('editId').value = id;
+        document.getElementById('editEmail').value = email || 'N/A';
+        document.getElementById('editRole').value = role || '';
+        document.getElementById('editEnabled').value = enabled;
+        document.getElementById('saveRoleBtn').setAttribute('formaction', `/admin/users/${id}/role`);
+        document.getElementById('saveEnabledBtn').setAttribute('formaction', `/admin/users/${id}/enabled`);
+
+        modal.style.display = 'block';
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('editModal');
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    // Функция для отправки формы
+    function submitForm() {
+        document.getElementById('filterForm').submit();
+    }
+
+    // Дебouncing для предотвращения слишком частых запросов
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Дебounced функция для отправки формы
+    const debouncedSubmit = debounce(submitForm, 300);
 </script>
 </body>
 </html>

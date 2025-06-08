@@ -29,101 +29,81 @@ public class UserAdminController {
     private UserService userService;
 
     @GetMapping("/users")
-    public String showUsersPage(Model model) {
-        return "admin/users";
-    }
-
-    @GetMapping("/api/users")
-    @ResponseBody
-    public ResponseEntity<?> getUsers(
+    public String showUsersPage(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "50") int size,
             @RequestParam(required = false) String email,
-            @RequestParam(required = false) String role) {
+            @RequestParam(required = false) String role,
+            Model model) {
         try {
             Role roleEnum = role != null && !role.isEmpty() ? Role.valueOf(role) : null;
             Page<User> userPage = userService.findUsers(email, roleEnum, PageRequest.of(page, size));
+            model.addAttribute("users", userPage.getContent());
+            model.addAttribute("currentPage", userPage.getNumber());
+            model.addAttribute("totalPages", userPage.getTotalPages());
+            model.addAttribute("totalElements", userPage.getTotalElements());
+            model.addAttribute("emailFilter", email != null ? email : "");
+            model.addAttribute("roleFilter", role != null ? role : "");
+            model.addAttribute("roles", Role.values());
             log.info("Загружен список пользователей: page={}, size={}, email={}, role={}", page, size, email, role);
-            return ResponseEntity.ok(userPage);
+            return "admin/users";
         } catch (IllegalArgumentException e) {
             log.error("Неверная роль: {}", role);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Неверная роль"));
+            model.addAttribute("error", "Неверная роль");
+            return "admin/users";
         } catch (Exception e) {
             log.error("Ошибка при загрузке пользователей: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Ошибка при загрузке пользователей"));
+            model.addAttribute("error", "Ошибка при загрузке пользователей");
+            return "admin/users";
         }
     }
 
-    @GetMapping("/api/users/{id}")
-    @ResponseBody
-    public ResponseEntity<?> getUserById(@PathVariable Long id) {
+    @PostMapping("/users/{id}/role")
+    public String updateUserRole(@PathVariable Long id, @RequestParam String role, Model model) {
         try {
-            User user = userService.findById(id);
-            if (user == null) {
-                log.error("Пользователь не найден для id: {}", id);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Пользователь не найден"));
-            }
-            log.info("Пользователь загружен: id={}", id);
-            return ResponseEntity.ok(user);
-        } catch (Exception e) {
-            log.error("Ошибка при загрузке пользователя id {}: {}", id, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Ошибка при загрузке пользователя"));
-        }
-    }
-
-    @PutMapping("/api/users/{id}/role")
-    @ResponseBody
-    public ResponseEntity<?> updateUserRole(@PathVariable Long id, @RequestBody Map<String, String> request) {
-        try {
-            String roleStr = request.get("role");
-            if (roleStr == null || roleStr.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Роль не указана"));
-            }
-            Role role = Role.valueOf(roleStr);
-            userService.updateUserRole(id, role);
+            Role roleEnum = Role.valueOf(role);
+            userService.updateUserRole(id, roleEnum);
             log.info("Роль пользователя обновлена: id={}, role={}", id, role);
-            return ResponseEntity.ok(Map.of("message", "Роль обновлена"));
+            model.addAttribute("message", "Роль обновлена");
         } catch (IllegalArgumentException e) {
             log.error("Неверная роль для id {}: {}", id, e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Неверная роль"));
+            model.addAttribute("error", "Неверная роль");
         } catch (Exception e) {
             log.error("Ошибка при обновлении роли пользователя id {}: {}", id, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Ошибка при обновлении роли"));
+            model.addAttribute("error", "Ошибка при обновлении роли");
         }
+        return "redirect:/admin/users";
     }
 
-    @PutMapping("/api/users/{id}/enabled")
-    @ResponseBody
-    public ResponseEntity<?> toggleUserEnabled(@PathVariable Long id, @RequestBody Map<String, Boolean> request) {
+    @PostMapping("/users/{id}/enabled")
+    public String toggleUserEnabled(@PathVariable Long id, @RequestParam boolean enabled, Model model) {
         try {
-            Boolean enabled = request.get("enabled");
-            if (enabled == null) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Статус не указан"));
-            }
             userService.toggleUserEnabled(id, enabled);
             log.info("Статус пользователя обновлен: id={}, enabled={}", id, enabled);
-            return ResponseEntity.ok(Map.of("message", "Статус обновлен"));
+            model.addAttribute("message", "Статус обновлен");
         } catch (Exception e) {
             log.error("Ошибка при обновлении статуса пользователя id {}: {}", id, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Ошибка при обновлении статуса"));
+            model.addAttribute("error", "Ошибка при обновлении статуса");
         }
+        return "redirect:/admin/users";
     }
 
-    @DeleteMapping("/api/users/{id}")
-    @ResponseBody
-    public ResponseEntity<?> deleteUser(@PathVariable Long id) {
+    @PostMapping("/users/{id}/delete")
+    public String deleteUser(@PathVariable Long id, Model model) {
         try {
             User user = userService.findById(id);
             if (user == null) {
                 log.error("Пользователь не найден для id: {}", id);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Пользователь не найден"));
+                model.addAttribute("error", "Пользователь не найден");
+            } else {
+                userService.deleteUser(id);
+                log.info("Пользователь удалён: id={}", id);
+                model.addAttribute("message", "Пользователь удалён");
             }
-            userService.deleteUser(id);
-            log.info("Пользователь удалён: id={}", id);
-            return ResponseEntity.ok(Map.of("message", "Пользователь удалён"));
         } catch (Exception e) {
-            log.error("Ошибка при удалении пользователя id {}: {}", id, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Ошибка при удалении пользователя"));
+            log.error("Ошибка при удалении пользователя id {}: {}", e.getMessage());
+            model.addAttribute("error", "Ошибка при удалении пользователя");
         }
+        return "redirect:/admin/users";
     }
 }
