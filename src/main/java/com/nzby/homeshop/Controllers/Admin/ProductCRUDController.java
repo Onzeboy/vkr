@@ -86,6 +86,8 @@ public class ProductCRUDController {
                 result.rejectValue("category", "category.invalid", "Недопустимая категория");
             } else {
                 product.setCategory(category);
+                product.getCategories().clear();
+                product.getCategories().add(category);
             }
         }
 
@@ -257,6 +259,8 @@ public class ProductCRUDController {
                 result.rejectValue("category", "category.invalid", "Недопустимая категория");
             } else {
                 product.setCategory(category);
+                product.getCategories().clear();
+                product.getCategories().add(category);
             }
         }
 

@@ -4,13 +4,9 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 @Entity
-@Table(name = "addresses",
-indexes = {@Index( name = "idx_address_id", columnList = "id"),
-       @Index(name = "idx_address_user", columnList = "user_id")
-})
+@Table(name = "addresses")
 @Data
 public class Address {
-
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

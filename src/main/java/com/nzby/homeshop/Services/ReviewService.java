@@ -4,7 +4,6 @@ import com.nzby.homeshop.POJO.*;
 import com.nzby.homeshop.Repository.*;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -287,30 +286,5 @@ public class ReviewService {
     }
     public Page<Review> findByProductIdWithPagination(Long productId, Pageable pageable) {
         return reviewRepository.findByProductIdOrderByVoteScoreDesc(productId, pageable);
-    }
-
-    public void deleteReview(Long id) {
-        Review review = reviewRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Review not found: " + id));
-
-        Product product = review.getProduct();
-        if (product == null) {
-            throw new IllegalArgumentException("Product not found for review: " + id);
-        }
-        product.removeReview(review);
-        if (!reviewRepository.existsById(id)) {
-            throw new IllegalArgumentException("Review not found: " + id);
-        }
-        reviewRepository.deleteById(id);
-    }
-
-    public Page<Review> getReviewsByProduct(Long productId, Pageable pageable) {
-        return reviewRepository.findByProductId(productId, pageable);
-    }
-
-    public Integer getVoteScoreAdmin(Long reviewId) {
-        Review review = reviewRepository.findById(reviewId)
-                .orElseThrow(() -> new IllegalArgumentException("Review not found: " + reviewId));
-        return review.getVoteScore(); // Assuming Review has a voteScore field or logic
     }
 }

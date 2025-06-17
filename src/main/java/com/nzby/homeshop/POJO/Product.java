@@ -12,11 +12,7 @@ import java.util.List;
 import java.util.Set;
 
 @Entity
-@Table(name = "products", indexes = {
-        @Index(name = "idx_products_category_id", columnList = "category_id"),
-        @Index(name = "idx_products_sku", columnList = "sku"),
-        @Index(name = "idx_products_name", columnList = "product_name"),
-})
+@Table(name = "products")
 public class Product {
 
     @Id
@@ -91,6 +87,10 @@ public class Product {
     @Column(name = "average_rating", precision = 2, scale = 1)
     private BigDecimal averageRating;
 
+    @Min(value = 0, message = "Продажи за месяц не могут быть отрицательными")
+    @Column(name = "monthly_sales")
+    private Integer monthlySales;
+
     @ElementCollection
     @CollectionTable(name = "product_tags", joinColumns = @JoinColumn(name = "product_id"))
     @Column(name = "tag")
@@ -106,6 +106,15 @@ public class Product {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "last_ordered")
+    private LocalDateTime lastOrdered;
+
+    @Column(name = "cluster_id")
+    private Integer clusterId;
+
+    @Min(value = 0, message = "Общие продажи не могут быть отрицательными")
+    @Column(name = "total_sales")
+    private Integer totalSales;
 
     @Min(value = 0, message = "Запас не может быть отрицательным")
     @Column(name = "stock")
@@ -114,6 +123,14 @@ public class Product {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 50)
     private ProductStatus status;
+
+    @NotEmpty(message = "Необходимо выбрать хотя бы одну категорию")
+    @ManyToMany
+    @JoinTable(
+            name = "product_categories",
+            joinColumns = @JoinColumn(name = "product_id"),
+            inverseJoinColumns = @JoinColumn(name = "category_id"))
+    private Set<Category> categories = new HashSet<>();
 
     @DecimalMin(value = "0.0", message = "Цена со скидкой не может быть отрицательной")
     @Column(name = "discounted_price")
@@ -270,6 +287,13 @@ public class Product {
         this.averageRating = averageRating;
     }
 
+    public Integer getMonthlySales() {
+        return monthlySales;
+    }
+
+    public void setMonthlySales(Integer monthlySales) {
+        this.monthlySales = monthlySales;
+    }
 
     public Set<String> getTags() {
         return tags;
@@ -303,6 +327,29 @@ public class Product {
         this.updatedAt = updatedAt;
     }
 
+    public LocalDateTime getLastOrdered() {
+        return lastOrdered;
+    }
+
+    public void setLastOrdered(LocalDateTime lastOrdered) {
+        this.lastOrdered = lastOrdered;
+    }
+
+    public Integer getClusterId() {
+        return clusterId;
+    }
+
+    public void setClusterId(Integer clusterId) {
+        this.clusterId = clusterId;
+    }
+
+    public Integer getTotalSales() {
+        return totalSales;
+    }
+
+    public void setTotalSales(Integer totalSales) {
+        this.totalSales = totalSales;
+    }
 
     public Integer getStock() {
         return stock;
@@ -320,6 +367,21 @@ public class Product {
         this.status = status;
     }
 
+    public Set<Category> getCategories() {
+        return categories;
+    }
+
+    public void setCategories(Set<Category> categories) {
+        this.categories = categories;
+    }
+
+    public void addCategory(Category category) {
+        this.categories.add(category);
+    }
+
+    public void removeCategory(Category category) {
+        this.categories.remove(category);
+    }
 
     public BigDecimal getDiscountedPrice() {
         return discountedPrice;
@@ -404,6 +466,7 @@ public class Product {
                 ", brand='" + brand + '\'' +
                 ", sku='" + sku + '\'' +
                 ", category=" + category +
+                ", categories=" + categories +
                 ", price=" + price +
                 ", weightValue=" + weightValue +
                 ", weightUnit='" + weightUnit + '\'' +

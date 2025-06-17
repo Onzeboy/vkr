@@ -3,9 +3,7 @@ package com.nzby.homeshop.POJO;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "product_images", indexes = {
-        @Index(name = "idx_product_images_product_id", columnList = "product_id")
-})
+@Table(name = "product_images")
 public class ProductImage {
 
     @Id

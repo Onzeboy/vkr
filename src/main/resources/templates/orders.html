@@ -355,14 +355,34 @@
     </style>
 </head>
 <body>
-<div th:replace="~{fragments/header :: header}"></div>
+<header>
+    <div class="header-container">
+        <div class="logo" onclick="window.location.href='/'">
+            <i class="fas fa-store"></i>
+            <span>Premium Store</span>
+        </div>
+        <nav class="header-nav">
+            <a href="/products">Каталог</a>
+            <a href="#">Акции</a>
+            <a href="#">Новинки</a>
+            <a href="#">Доставка</a>
+            <a href="#">Контакты</a>
+        </nav>
+        <div class="header-actions">
+            <a href="/cart" class="cart-btn">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-count" th:text="${cartCount}">0</span>
+            </a>
+        </div>
+    </div>
+</header>
 
 <main class="main-content">
     <!-- Секция активных заказов -->
     <div class="orders-section">
         <h2>Активные заказы</h2>
         <th:block th:if="${activeOrders != null and !activeOrders.isEmpty()}">
-            <div th:each="order : ${activeOrders}" class="order-item" th:attr="data-order-id=${order.id}">
+            <div th:each="order : ${activeOrders}" class="order-item">
                 <div class="order-header">
                     <span class="order-id" th:text="'Заказ #' + ${order.id}">Заказ #1</span>
                     <div>
@@ -420,7 +440,7 @@
     <div class="orders-section">
         <h2>Последние завершённые заказы</h2>
         <th:block th:if="${lastCompletedOrders != null and !lastCompletedOrders.isEmpty()}">
-            <div th:each="order : ${lastCompletedOrders}" class="order-item" th:attr="data-order-id=${order.id}">
+            <div th:each="order : ${lastCompletedOrders}" class="order-item">
                 <div class="order-header">
                     <span class="order-id" th:text="'Заказ #' + ${order.id}">Заказ #1</span>
                     <div>
@@ -482,26 +502,13 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Обработчик для изображений (модальное окно)
         const orderImages = document.querySelectorAll('.order-image');
         orderImages.forEach(function(image) {
             image.addEventListener('click', function(event) {
                 event.preventDefault();
-                event.stopPropagation(); // Останавливаем всплытие, чтобы не сработал клик по order-item
                 const imageSrc = image.getAttribute('data-modal-src');
                 if (imageSrc) {
                     openModal(imageSrc);
-                }
-            });
-        });
-
-        // Обработчик для блока заказа (переход на /orders/{id})
-        const orderItems = document.querySelectorAll('.order-item');
-        orderItems.forEach(function(item) {
-            item.addEventListener('click', function(event) {
-                const orderId = item.getAttribute('data-order-id');
-                if (orderId) {
-                    window.location.href = `/orders/${orderId}`;
                 }
             });
         });

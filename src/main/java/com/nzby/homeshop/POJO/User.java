@@ -21,9 +21,7 @@ import java.util.Set;
 import java.util.ArrayList;
 
 @Entity
-@Table(name = "users", indexes = {
-        @Index(name = "idx_users_email", columnList = "email")
-})
+@Table(name = "users")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -53,9 +51,6 @@ public class User implements UserDetails {
     @NotBlank(message = "Фамилия не может быть пустой")
     private String surname;
 
-    @Transient
-    private String confirmPassword;
-
     @Column(name = "phone_number")
     @Pattern(regexp = "^\\+?[0-9]{10,15}$", message = "Неверный формат номера телефона")
     private String phoneNumber;
@@ -81,23 +76,12 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<SupportTicket> tickets;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Courier courier;
-
     public boolean isEnabled() {
         return enabled;
     }
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
-    }
-
-    public String getConfirmPassword() {
-        return confirmPassword;
-    }
-
-    public void setConfirmPassword(String confirmPassword) {
-        this.confirmPassword = confirmPassword;
     }
 
     public List<Address> getAddresses() {
@@ -178,22 +162,6 @@ public class User implements UserDetails {
 
     public void setOrders(List<Order> orders) {
         this.orders = orders;
-    }
-
-    public List<SupportTicket> getTickets() {
-        return tickets;
-    }
-
-    public void setTickets(List<SupportTicket> tickets) {
-        this.tickets = tickets;
-    }
-
-    public Courier getCourier() {
-        return courier;
-    }
-
-    public void setCourier(Courier courier) {
-        this.courier = courier;
     }
 
     public List<CartItem> getCartItems() {

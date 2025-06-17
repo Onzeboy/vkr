@@ -3,10 +3,7 @@ package com.nzby.homeshop.POJO;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "chat_images", indexes = {
-        @Index(name = "idx_chat_images_message_id", columnList = "message_id"),
-        @Index(name = "idx_chat_images_file_path", columnList = "file_path")
-})
+@Table(name = "chat_images")
 public class ChatImage {
 
     @Id

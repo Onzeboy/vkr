@@ -1,46 +1,36 @@
 package com.nzby.homeshop.Services;
 
-import com.nzby.homeshop.DTO.UpdateProfileRequest;
-import com.nzby.homeshop.POJO.*;
-import com.nzby.homeshop.POJO.Enum.ActivityType;
-import com.nzby.homeshop.Repository.*;
-import jakarta.validation.Valid;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.nzby.homeshop.POJO.Address;
+import com.nzby.homeshop.POJO.User;
 import com.nzby.homeshop.POJO.Enum.Role;
-import jakarta.transaction.Transactional;
+import com.nzby.homeshop.Repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class UserService {
-    @Autowired
-    private UserRepository userRepository;
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private ProductRepository productRepository;
-
-    @Autowired
-    private WishlistRepository wishlistRepository;
-
-    private static final Logger logger = LoggerFactory.getLogger(UserService.class);
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
    // Получение текущего аутентифицированного пользователя
    public User getCurrentUser() {
@@ -121,9 +111,8 @@ public class UserService {
                 .orElseThrow(() -> new UsernameNotFoundException("Пользователь не найден с ID: " + userId));
         userRepository.delete(user);
     }
-    public User findByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Email не найден: " + email));
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
     }
 
     public Page<User> findUsers(String email, Role role, PageRequest pageable) {
@@ -147,120 +136,4 @@ public class UserService {
         user.setEnabled(enabled);
         userRepository.save(user);
     }
-
-    @Transactional
-    public void addToWishlist(String email, Long productId) {
-        User user = findByEmail(email);
-        
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Товар не найден"));
-        if (wishlistRepository.findByUserEmailAndProductId(email, productId).isEmpty()) {
-            Wishlist wishlist = new Wishlist();
-            wishlist.setUser(user);
-            wishlist.setProduct(product);
-            wishlist.setAddedAt(LocalDateTime.now());
-            wishlistRepository.save(wishlist);
-        }
-    }
-
-    @Transactional
-    public void removeFromWishlist(String email, Long productId) {
-        wishlistRepository.findByUserEmailAndProductId(email, productId)
-                .ifPresent(wishlistRepository::delete);
-    }
-
-    public List<Product> getFavoriteProducts(String email) {
-        return wishlistRepository.findByUserEmail(email)
-                .stream()
-                .map(Wishlist::getProduct)
-                .collect(Collectors.toList());
-    }
-
-    public List<Long> getWishlistProductIds(String email) {
-        return wishlistRepository.findProductIdsByUserEmail(email);
-    }
-    public boolean isAuthenticated(Authentication authentication) {
-        User user = null;
-        UserDetails userDetails = null;
-
-        if (authentication != null && authentication.isAuthenticated()) {
-            Object principal = authentication.getPrincipal();
-            if (principal instanceof UserDetails) {
-                userDetails = (UserDetails) principal;
-                user = userRepository.findByEmail(userDetails.getUsername()).orElse(null);
-                if (user == null) {
-                    logger.warn("Пользователь с email {} не найден в базе данных", userDetails.getUsername());
-                }
-            }
-        }
-
-        return userDetails != null;
-    }
-
-    @Transactional
-    public void updateUserProfile(User user, String name, String surname, String phone) {
-        if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Имя не может быть пустым");
-        }
-        if (surname == null || surname.trim().isEmpty()) {
-            throw new IllegalArgumentException("Фамилия не может быть пустой");
-        }
-        if (phone == null || !phone.matches("^\\+?[1-9]\\d{1,14}$")) {
-            throw new IllegalArgumentException("Неверный формат номера телефона");
-        }
-        user.setName(name);
-        user.setSurname(surname);
-        user.setPhoneNumber(phone);
-        userRepository.save(user);
-    }
-
-    @Transactional
-    public void updateProfile(@Valid UpdateProfileRequest request) throws IllegalArgumentException {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        Optional<User> optionalUser = userRepository.findByEmail(username);
-        if (!optionalUser.isPresent()) {
-            throw new IllegalArgumentException("Пользователь не найден");
-        }
-
-        User user = optionalUser.get();
-        // Нормализация имени и фамилии
-        if (request.getName() != null && !request.getName().trim().isEmpty()) {
-            user.setName(capitalize(request.getName().trim()));
-        }
-        if (request.getSurname() != null && !request.getSurname().trim().isEmpty()) {
-            user.setSurname(capitalize(request.getSurname().trim()));
-        }
-        // Форматирование номера телефона
-        if (request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty()) {
-            String phone = request.getPhoneNumber().trim();
-            if (phone.startsWith("8")) {
-                phone = "+7" + phone.substring(1);
-            }
-            user.setPhoneNumber(phone);
-        } else {
-            user.setPhoneNumber(null);
-        }
-
-        userRepository.save(user);
-    }
-
-    private String capitalize(String str) {
-        if (str == null || str.isEmpty()) {
-            return str;
-        }
-        String[] words = str.toLowerCase().split("\\s+");
-        StringBuilder capitalized = new StringBuilder();
-        for (String word : words) {
-            if (!word.isEmpty()) {
-                capitalized.append(Character.toUpperCase(word.charAt(0)))
-                        .append(word.substring(1)).append(" ");
-            }
-        }
-        return capitalized.toString().trim();
-    }
-
-    public List<User> findUsersByRole(Role role) {
-        return userRepository.findByRole(role);
-    }
-
 }

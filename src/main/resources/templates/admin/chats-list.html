@@ -20,7 +20,7 @@
         }
 
         body {
-            padding-top: 4.5rem;
+            padding-top: 4.5rem; /* Отступ для фиксированного хедера */
         }
 
         .status-open { color: #10b981; font-weight: 600; }
@@ -66,18 +66,14 @@
 <body class="bg-gray-100 font-sans">
 <header class="fixed top-0 left-0 w-full bg-white shadow-md border border-gray-200 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center py-3">
-        <a href="/" class="flex items-center space-x-2 text-xl font-bold text-gray-800 hover:text-gray-600">
+        <a href="/admin" class="flex items-center space-x-2 text-xl font-bold text-gray-800 hover:text-gray-600">
             <i class="fas fa-headset text-gray-500"></i>
-            <span>Доставка - Админ</span>
+            <span>Premium Store - Админ</span>
         </a>
         <div class="flex items-center space-x-4">
-            <a href="/" class="text-gray-600 hover:text-gray-800 font-medium flex items-center space-x-1">
-                <i class="fas fa-cog"></i>
-                <span>Админ панель</span>
-            </a>
             <a href="/admin/ticket-history" class="text-gray-600 hover:text-gray-800 font-medium flex items-center space-x-1">
                 <i class="fas fa-history"></i>
-                <span>История чатов</span>
+                <span>История тикетов</span>
             </a>
             <a href="/logout" class="text-gray-600 hover:text-gray-800 font-medium flex items-center space-x-1">
                 <i class="fas fa-sign-out-alt"></i>

@@ -7,13 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "chat_messages", indexes = {
-        @Index(name = "idx_chat_messages_ticket_id", columnList = "ticket_id"),
-        @Index(name = "idx_chat_messages_sender_id", columnList = "sender_id"),
-        @Index(name = "idx_chat_messages_timestamp", columnList = "timestamp"),
-        @Index(name = "idx_chat_messages_status", columnList = "status"),
-        @Index(name = "idx_chat_messages_ticket_timestamp", columnList = "ticket_id, timestamp")
-})
+@Table(name = "chat_messages")
 public class ChatMessage {
 
     @Id

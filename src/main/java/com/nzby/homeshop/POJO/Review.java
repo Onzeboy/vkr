@@ -10,10 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "reviews", indexes = {
-        @Index(name = "idx_reviews_product_id", columnList = "product_id"),
-        @Index(name = "idx_reviews_user_id", columnList = "user_id")
-})
+@Table(name = "reviews")
 public class Review {
 
     @Id

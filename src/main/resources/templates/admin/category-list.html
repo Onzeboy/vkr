@@ -3,24 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Управление категориями - Доставка</title>
+    <title>Управление категориями</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- Подключение Font Awesome для иконок -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root {
-            --primary: #333333;
-            --primary-dark: #1a1a1a;
-            --accent: #666666;
-            --danger: #e63946;
-            --light: #f8f9fa;
-            --dark: #212529;
-            --gray: #6c757d;
-            --light-gray: #e9ecef;
-        }
-        body {
-            padding-top: 4.5rem;
-            font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
-        }
+        /* Стили для улучшения иерархии и адаптивности */
         .category-row:hover {
             background-color: #f3f4f6;
             transition: background-color 0.2s;
@@ -43,26 +31,8 @@
     </style>
 </head>
 <body class="bg-gray-50 font-sans">
-<header class="fixed top-0 left-0 w-full bg-white shadow-md border border-gray-200 z-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center py-3">
-        <a href="/" class="flex items-center space-x-2 text-xl font-bold text-gray-800 hover:text-gray-600">
-            <i class="fas fa-store text-gray-500"></i>
-            <span>Доставка - Админ</span>
-        </a>
-        <div class="flex items-center space-x-4">
-            <a href="/" class="text-gray-600 hover:text-gray-800 font-medium flex items-center space-x-1">
-                <i class="fas fa-cog"></i>
-                <span>Админ панель</span>
-            </a>
-            <a href="/logout" class="text-gray-600 hover:text-gray-800 font-medium flex items-center space-x-1">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Выйти</span>
-            </a>
-        </div>
-    </div>
-</header>
-
 <div class="container mx-auto p-6 max-w-7xl">
+    <!-- Заголовок и кнопка добавления -->
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-gray-800">Управление категориями</h1>
         <a th:href="@{/admin/categories/add}" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
@@ -70,11 +40,13 @@
         </a>
     </div>
 
+    <!-- Сообщение об ошибке -->
     <div th:if="${error}" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded">
         <span th:text="${error}"></span>
         <p th:if="${error.contains('нарушает ограничение внешнего ключа')}" class="mt-2 text-sm">Удаление невозможно, так как категория используется в товарах. Сначала удалите или обновите связанные продукты.</p>
     </div>
 
+    <!-- Таблица категорий -->
     <div class="bg-white shadow-lg rounded-lg overflow-hidden">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
@@ -86,6 +58,7 @@
                 </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
+                <!-- Итерация по корневым категориям -->
                 <th:block th:each="node : ${categoryTree}">
                     <tr class="category-row">
                         <td class="py-4 px-6 text-gray-700" th:text="${node.category.id}"></td>
@@ -104,6 +77,7 @@
                             </form>
                         </td>
                     </tr>
+                    <!-- Итерация по дочерним категориям -->
                     <th:block th:each="childNode : ${node.children}">
                         <tr class="category-row">
                             <td class="py-4 px-6 text-gray-700" th:text="${childNode.category.id}"></td>
@@ -122,6 +96,7 @@
                                 </form>
                             </td>
                         </tr>
+                        <!-- Итерация по дочерним категориям второго уровня -->
                         <th:block th:each="grandChildNode : ${childNode.children}">
                             <tr class="category-row">
                                 <td class="py-4 px-6 text-gray-700" th:text="${grandChildNode.category.id}"></td>

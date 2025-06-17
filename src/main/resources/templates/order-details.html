@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Детали заказа - Premium Store</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <style>
         :root {
@@ -242,12 +241,6 @@
             color: var(--primary);
         }
 
-        .order-actions {
-            margin-top: 1.5rem;
-            display: flex;
-            gap: 1rem;
-        }
-
         .no-items {
             color: var(--gray);
             font-size: 1rem;
@@ -314,16 +307,31 @@
             .order-total-price {
                 font-size: 1rem;
             }
-
-            .order-actions {
-                flex-direction: column;
-                gap: 0.5rem;
-            }
         }
     </style>
 </head>
 <body>
-<div th:replace="~{fragments/header :: header}"></div>
+<header>
+    <div class="header-container">
+        <div class="logo" onclick="window.location.href='/'">
+            <i class="fas fa-store"></i>
+            <span>Premium Store</span>
+        </div>
+        <nav class="header-nav">
+            <a href="/products">Каталог</a>
+            <a href="#">Акции</a>
+            <a href="#">Новинки</a>
+            <a href="#">Доставка</a>
+            <a href="#">Контакты</a>
+        </nav>
+        <div class="header-actions">
+            <a href="/cart" class="cart-btn">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-count" th:text="${cartCount}">0</span>
+            </a>
+        </div>
+    </div>
+</header>
 
 <main class="main-content">
     <div class="order-details-section">
@@ -398,20 +406,6 @@
         <div class="order-total-price" th:if="${order.orderItems != null and !order.orderItems.isEmpty()}"
              th:text="'Итого: ₽ ' + ${#numbers.formatDecimal(order.totalAmount.doubleValue(), 1, 2)}">
             Итого: ₽ 0.00
-        </div>
-        <div class="order-actions" th:if="${order.status != null}">
-            <form th:if="${order.status == T(com.nzby.homeshop.POJO.Enum.OrderStatus).PENDING}"
-                  th:action="@{/orders/{id}/cancel(id=${order.id})}" method="post">
-                <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                    Отменить заказ
-                </button>
-            </form>
-            <form th:if="${order.status == T(com.nzby.homeshop.POJO.Enum.OrderStatus).DELIVERED}"
-                  th:action="@{/orders/{id}/repeat(id=${order.id})}" method="post">
-                <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                    Повторить заказ
-                </button>
-            </form>
         </div>
     </div>
 

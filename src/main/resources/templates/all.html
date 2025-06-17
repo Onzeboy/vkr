@@ -411,37 +411,6 @@
         .wishlist-btn.active {
             color: var(--danger);
         }
-        .wishlist-btn.active i {
-            animation: heart-fill 0.3s ease forwards;
-        }
-
-        .wishlist-btn:not(.active) i {
-            animation: heart-empty 0.3s ease forwards;
-        }
-
-        @keyframes heart-fill {
-            0% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.3);
-            }
-            100% {
-                transform: scale(1);
-            }
-        }
-
-        @keyframes heart-empty {
-            0% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(0.8);
-            }
-            100% {
-                transform: scale(1);
-            }
-        }
 
         .pagination {
             display: flex;
@@ -532,7 +501,33 @@
     </style>
 </head>
 <body>
-<div th:replace="~{fragments/header :: header}"></div>
+<header>
+    <div class="header-container">
+        <a href="/" class="logo">
+            <i class="fas fa-store"></i>
+            <span>Premium Store</span>
+        </a>
+        <nav class="header-nav">
+            <a href="/products">Товары</a>
+            <a href="#">Продукты</a>
+            <a href="#">Новинки</a>
+            <a href="#delivery">Доставка</a>
+            <a href="#contacts">Контакты</a>
+        </nav>
+        <div class="header-actions">
+            <a th:href="@{/auth/login}" th:if="${!isAuthenticated}">
+                <i class="fas fa-user"></i> Войти
+            </a>
+            <a th:href="@{/auth/logout}" th:if="${isAuthenticated}">
+                <i class="fas fa-sign-out-alt"></i> Выйти
+            </a>
+            <a href="/cart" class="cart-btn">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-count" th:text="${cartCount}">0</span>
+            </a>
+        </div>
+    </div>
+</header>
 
 <main class="main-content">
     <div class="search-filter-container">
@@ -608,7 +603,7 @@
                             </a>
                         </div>
                     </div>
-                    <button class="wishlist-btn" th:data-product-id="${product.id}" th:classappend="${isAuthenticated} ? '' : 'disabled'" th:disabled="${!isAuthenticated}">
+                    <button class="wishlist-btn">
                         <i class="far fa-heart"></i>
                     </button>
                 </div>
@@ -635,20 +630,17 @@
     document.addEventListener('DOMContentLoaded', async function() {
         const MAX_QUANTITY = 10;
         const cartButtons = document.querySelectorAll('.add-to-cart');
-        const wishlistButtons = document.querySelectorAll('.wishlist-btn');
         const cartCount = document.querySelector('.cart-count');
         const searchInput = document.querySelector('#search-input');
         const categorySelect = document.querySelector('#category-select');
         const productsContainer = document.querySelector('#products-container');
 
         let cartItems = [];
-        let wishlistItems = [];
         let stockQuantities = {};
 
-        // Инициализация данных
-        async function initializeData() {
+        // Загрузка корзины и остатков
+        async function initializeCart() {
             try {
-                // Корзина
                 const cartResponse = await fetch('/api/cart/items', {
                     headers: { 'Accept': 'application/json' }
                 });
@@ -656,37 +648,39 @@
                     cartItems = await cartResponse.json();
                     cartCount.textContent = cartItems.reduce((sum, item) => sum + item.quantity, 0);
                 } else {
-                    console.warn(`Не удалось загрузить корзину: ${cartResponse.status}`);
+                    console.warn('Не удалось загрузить элементы корзины:', cartResponse.status);
                     cartCount.textContent = '0';
                 }
 
-                // Вишлист
-                const wishlistResponse = await fetch('/user/api/items', {
+                const stockResponse = await fetch('/api/products/stock', {
                     headers: { 'Accept': 'application/json' }
                 });
-                if (wishlistResponse.ok) {
-                    wishlistItems = await wishlistResponse.json();
+                if (stockResponse.ok) {
+                    const stockData = await stockResponse.json();
+                    stockData.forEach(item => {
+                        stockQuantities[item.productId] = Math.min(item.quantity, MAX_QUANTITY);
+                    });
                 } else {
-                    console.warn(`Не удалось загрузить вишлист: ${wishlistResponse.status}`);
+                    console.warn('Не удалось загрузить данные об остатках:', stockResponse.status);
                 }
             } catch (error) {
-                console.error('Ошибка инициализации данных:', error);
+                console.error('Ошибка при загрузке данных:', error);
                 cartCount.textContent = '0';
             }
         }
 
-        // Инициализация корзины
+        // Инициализация кнопок корзины
         async function initializeCartButtons() {
-            await initializeData();
+            await initializeCart();
             cartButtons.forEach(button => {
                 const productId = button.getAttribute('data-product-id');
-                if (!productId) {
-                    console.warn('Product ID отсутствует на кнопке корзины');
-                    return;
-                }
+                if (!productId) return;
+
                 const cartItem = cartItems.find(item => item.productId == productId);
                 const available = stockQuantities[productId] !== undefined ? Math.min(stockQuantities[productId], MAX_QUANTITY) : MAX_QUANTITY;
+
                 button.setAttribute('data-max-quantity', available);
+
                 if (cartItem) {
                     updateCartButton(button, {
                         cartItemId: cartItem.id,
@@ -697,185 +691,135 @@
             });
         }
 
-        // Инициализация вишлиста
-        function initializeWishlistButtons() {
-            document.querySelectorAll('.wishlist-btn').forEach(button => {
-                const productId = parseInt(button.getAttribute('data-product-id'));
-                if (!productId) {
-                    console.warn('Product ID отсутствует на кнопке вишлиста');
-                    return;
-                }
-                if (wishlistItems.includes(productId)) {
-                    button.classList.add('active');
-                    button.querySelector('i').classList.replace('far', 'fas');
-                }
-            });
-        }
+        initializeCartButtons();
 
-        // Обработчики корзины
-        function attachCartHandlers() {
-            cartButtons.forEach(button => {
-                button.addEventListener('click', async function(e) {
-                    e.preventDefault();
-                    if (this.classList.contains('in-cart')) return;
-                    const productId = this.getAttribute('data-product-id');
-                    const available = parseInt(this.getAttribute('data-max-quantity')) || MAX_QUANTITY;
-                    if (available <= 0) {
-                        alert('Товара нет в наличии');
-                        return;
-                    }
-                    try {
-                        const response = await fetch('/api/cart/add', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ productId, quantity: 1 })
-                        });
-                        if (response.ok) {
-                            const data = await response.json();
-                            updateCartButton(this, data);
-                            cartCount.textContent = data.totalItems;
-                            this.setAttribute('data-max-quantity', Math.max(available - 1, 0));
-                        } else {
-                            const errorText = await response.text();
-                            alert(errorText || 'Ошибка добавления товара');
-                        }
-                    } catch (error) {
-                        console.error('Ошибка добавления в корзину:', error);
-                        alert('Ошибка добавления товара');
-                    }
-                });
-            });
-
-            document.addEventListener('click', async function(e) {
-                const target = e.target.closest('.cart-minus') || e.target.closest('.cart-plus');
-                if (!target) return;
+        // Обработка кликов по кнопке "В корзину"
+        cartButtons.forEach(button => {
+            button.addEventListener('click', async function(e) {
                 e.preventDefault();
-                e.stopPropagation();
-                const button = target.closest('.add-to-cart');
-                const quantityEl = button.querySelector('.cart-quantity');
-                const plusBtn = button.querySelector('.cart-plus');
-                const currentQuantity = parseInt(quantityEl.textContent);
-                const change = target.classList.contains('cart-minus') ? -1 : 1;
-                const newQuantity = currentQuantity + change;
-                const cartItemId = quantityEl.getAttribute('data-cart-item-id');
-                const maxAvailable = parseInt(button.getAttribute('data-max-quantity')) || MAX_QUANTITY;
+                if (this.classList.contains('in-cart')) return;
 
-                if (newQuantity > MAX_QUANTITY) {
-                    alert(`Максимум ${MAX_QUANTITY} шт.`);
+                const productId = this.getAttribute('data-product-id');
+                const available = parseInt(this.getAttribute('data-max-quantity')) || MAX_QUANTITY;
+
+                if (available <= 0) {
+                    alert('Товара нет в наличии');
                     return;
                 }
 
-                if (newQuantity < 1) {
-                    if (confirm('Удалить из корзины?')) {
-                        try {
-                            const response = await fetch(`/api/cart/remove?cartItemId=${cartItemId}`, {
-                                method: 'DELETE'
-                            });
-                            if (response.ok) {
-                                const data = await response.json();
-                                resetCartButton(button, data.totalItems);
-                                button.setAttribute('data-max-quantity', maxAvailable + 1);
-                            } else {
-                                alert('Ошибка удаления товара');
-                            }
-                        } catch (error) {
-                            console.error('Ошибка удаления:', error);
-                            alert('Ошибка удаления товара');
-                        }
+                try {
+                    const response = await fetch('/api/cart/add', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ productId, quantity: 1 })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        updateCartButton(this, data);
+                        cartCount.textContent = data.totalItems;
+                        const newAvailable = available - 1;
+                        this.setAttribute('data-max-quantity', newAvailable >= 0 ? newAvailable : 0);
+                    } else {
+                        const errorText = await response.text();
+                        alert(errorText || 'Ошибка при добавлении товара');
                     }
-                } else {
+                } catch (error) {
+                    console.error('Ошибка при добавлении в корзину:', error);
+                    alert('Произошла ошибка при добавлении товара в корзину');
+                }
+            });
+        });
+
+        // Обработка изменения количества
+        document.addEventListener('click', async function(e) {
+            const target = e.target.closest('.cart-minus') || e.target.closest('.cart-plus');
+            if (!target) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            const button = target.closest('.add-to-cart');
+            const quantityEl = button.querySelector('.cart-quantity');
+            const plusBtn = button.querySelector('.cart-plus');
+            const currentQuantity = parseInt(quantityEl.textContent);
+            const change = target.classList.contains('cart-minus') ? -1 : 1;
+            const newQuantity = currentQuantity + change;
+            const cartItemId = quantityEl.getAttribute('data-cart-item-id');
+            const maxAvailable = parseInt(button.getAttribute('data-max-quantity')) || MAX_QUANTITY;
+
+            if (newQuantity > MAX_QUANTITY) {
+                alert(`Максимальное количество одного товара: ${MAX_QUANTITY} шт.`);
+                return;
+            }
+
+            if (newQuantity < 1) {
+                if (confirm('Удалить товар из корзины?')) {
                     try {
-                        const response = await fetch('/api/cart/update', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ cartItemId, quantity: newQuantity })
+                        const response = await fetch(`/api/cart/remove?cartItemId=${cartItemId}`, {
+                            method: 'DELETE'
                         });
                         if (response.ok) {
                             const data = await response.json();
-                            quantityEl.textContent = data.quantity;
-                            cartCount.textContent = data.totalItems;
-                            button.setAttribute('data-max-quantity', maxAvailable - change);
-                            if (plusBtn) {
-                                plusBtn.disabled = data.quantity >= maxAvailable;
-                                plusBtn.style.opacity = data.quantity >= maxAvailable ? '0.5' : '1';
-                                plusBtn.title = data.quantity >= maxAvailable ? `Максимум: ${maxAvailable} шт.` : '';
-                            }
+                            resetCartButton(button, data.totalItems);
+                            button.setAttribute('data-max-quantity', maxAvailable + 1);
                         } else {
-                            const errorText = await response.text();
-                            alert(errorText || 'Ошибка обновления количества');
+                            alert('Ошибка при удалении товара');
                         }
                     } catch (error) {
-                        console.error('Ошибка обновления:', error);
-                        alert('Ошибка обновления количества');
+                        console.error('Ошибка при удалении:', error);
+                        alert('Ошибка при удалении товара');
                     }
                 }
-            });
-        }
+            } else {
+                try {
+                    const response = await fetch('/api/cart/update', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ cartItemId, quantity: newQuantity })
+                    });
 
-        // Обработчики вишлиста
-        function attachWishlistHandlers() {
-            document.querySelectorAll('.wishlist-btn').forEach(button => {
-                button.addEventListener('click', async function(e) {
-                    e.preventDefault();
-                    if (this.classList.contains('disabled')) {
-                        window.location.href = '/auth/login';
-                        return;
-                    }
-                    const productId = parseInt(this.getAttribute('data-product-id'));
-                    if (!productId) {
-                        alert('Ошибка: ID продукта не найден');
-                        return;
-                    }
-                    const isActive = this.classList.contains('active');
-                    const icon = this.querySelector('i');
-                    try {
-                        const response = await fetch(`/user/api/${isActive ? 'remove' : 'add'}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ productId })
-                        });
-                        if (response.ok) {
-                            if (isActive) {
-                                this.classList.remove('active');
-                                icon.classList.replace('fas', 'far');
-                                wishlistItems = wishlistItems.filter(id => id !== productId);
-                            } else {
-                                this.classList.add('active');
-                                icon.classList.replace('far', 'fas');
-                                wishlistItems.push(productId);
-                            }
-                        } else {
-                            const errorText = await response.text();
-                            alert(errorText || `Ошибка ${isActive ? 'удаления' : 'добавления'} в избранное`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        quantityEl.textContent = data.quantity;
+                        cartCount.textContent = data.totalItems;
+                        button.setAttribute('data-max-quantity', maxAvailable - change);
+
+                        if (plusBtn) {
+                            plusBtn.disabled = data.quantity >= maxAvailable;
+                            plusBtn.style.opacity = data.quantity >= maxAvailable ? '0.5' : '1';
+                            plusBtn.title = data.quantity >= maxAvailable ? `Максимальное количество: ${maxAvailable} шт.` : '';
                         }
-                    } catch (error) {
-                        console.error(`Ошибка ${isActive ? 'удаления' : 'добавления'} в вишлист:`, error);
-                        alert('Ошибка');
+                    } else {
+                        const errorText = await response.text();
+                        alert(errorText || 'Ошибка при обновлении количества');
                     }
-                });
-            });
-        }
+                } catch (error) {
+                    console.error('Ошибка при обновлении количества:', error);
+                    alert('Ошибка при обновлении количества товаров');
+                }
+            }
+        });
 
-        // Обновление кнопки корзины
         function updateCartButton(button, data) {
-            const maxAvailable = parseInt(button.getAttribute('data-max-quantity')) || MAX_QUANTITY;
+            const maxAvailable = parseInt(button.getAttribute('data-max-quantity'));
             const actualQuantity = Math.min(data.quantity || 1, maxAvailable);
+
             button.classList.add('in-cart');
             button.innerHTML = `
-            <span class="cart-text">В корзине</span>
-            <button class="cart-minus">-</button>
-            <span class="cart-quantity" data-cart-item-id="${data.cartItemId}">${actualQuantity}</span>
-            <button class="cart-plus">+</button>
-        `;
+        <span class="cart-text">В корзине</span>
+        <button class="cart-minus">-</button>
+        <span class="cart-quantity" data-cart-item-id="${data.cartItemId}">${actualQuantity}</span>
+        <button class="cart-plus">+</button>
+      `;
+
             const plusBtn = button.querySelector('.cart-plus');
             if (plusBtn) {
                 plusBtn.disabled = actualQuantity >= maxAvailable;
-                plusBtn.style.opacity = actualQuantity >= maxAvailable ? '0.5' : '1';
-                plusBtn.title = actualQuantity >= maxAvailable ? `Максимум: ${maxAvailable} шт.` : '';
+                plusBtn.style.opacity = actualQuantity >= maxAvailable ? '0.5' : '';
+                plusBtn.title = actualQuantity >= maxAvailable ? `Максимальное количество: ${maxAvailable} шт.` : '';
             }
         }
 
-        // Сброс кнопки корзины
         function resetCartButton(button, newTotalItems) {
             button.classList.remove('in-cart');
             button.innerHTML = '<i class="fas fa-cart-plus"></i> В корзину';
@@ -895,10 +839,8 @@
                     const data = await response.json();
                     updateProducts(data.content);
                     updatePagination(data.number, data.totalPages);
-                    await initializeCartButtons();
-                    initializeWishlistButtons();
-                    attachCartHandlers();
-                    attachWishlistHandlers();
+                    initializeCartButtons(); // Повторная инициализация кнопок после обновления товаров
+                    // Устанавливаем выбранную категорию в select после AJAX
                     categorySelect.value = category;
                 } else {
                     productsContainer.innerHTML = '<p>Ошибка при выполнении поиска</p>';
@@ -909,99 +851,89 @@
             }
         }
 
-        // Обновление карточек товаров
         function updateProducts(products) {
             productsContainer.innerHTML = products.length === 0 ? '<p>Товары отсутствуют</p>' : '';
-            const isAuthenticated = !!document.querySelector('[th\\:if="${isAuthenticated}"]');
             products.forEach(product => {
                 const productCard = document.createElement('div');
                 productCard.className = 'product-card';
                 productCard.innerHTML = `
-                <div class="product-image-container">
-                    <a href="/products/${product.id}" class="product-image-link">
-                        <img src="${product.images && product.images.length > 0 ?
+          <div class="product-image-container">
+            <a href="/products/${product.id}" class="product-image-link">
+              <img src="${product.images && product.images.length > 0 ?
                     (product.images.find(img => img.isPrimary) ?
                         '/uploaded-images/' + product.images.find(img => img.isPrimary).filePath :
                         '/uploaded-images/' + product.images[0].filePath) :
                     'https://via.placeholder.com/250'}" alt="${product.name}" class="product-image" />
-                    </a>
-                </div>
-                <div class="product-info">
-                    <div>
-                        <h3 class="product-title">${product.name}</h3>
-                        <span class="product-weight">${product.weightValue ? ' ' + product.weightValue + (product.weightUnit ? ' ' + product.weightUnit : '') : ''}</span>
-                    </div>
-                    <div class="product-price-container">
-                        <span class="product-price">${(product.discountedPrice || product.price).toFixed(2)} ₽</span>
-                        ${product.discountedPrice && product.discountedPrice < product.price ?
+            </a>
+          </div>
+          <div class="product-info">
+            <div>
+              <h3 class="product-title">${product.name}</h3>
+              <span class="product-weight">${product.weightValue ? ' ' + product.weightValue + (product.weightUnit ? ' ' + product.weightUnit : '') : ''}</span>
+            </div>
+            <div class="product-price-container">
+              <span class="product-price">${(product.discountedPrice || product.price).toFixed(2)} ₽</span>
+              ${product.discountedPrice && product.discountedPrice < product.price ?
                     `<span class="product-old-price">${product.price.toFixed(2)} ₽</span>` : ''}
-                    </div>
-                    ${product.discountPercentage > 0 ? `<div class="product-badge">-${product.discountPercentage}%</div>` : ''}
-                    ${product.status === 'NEW' ? `<div class="product-badge">Новинка</div>` : ''}
-                    ${product.status === 'FEATURED' ? `<div class="product-badge">Рекомендуем</div>` : ''}
-                    <div class="product-rating" data-product-id="${product.id}">
-                        ${product.averageRating && product.averageRating > 0 ?
+            </div>
+            ${product.discountPercentage > 0 ? `<div class="product-badge">-${product.discountPercentage}%</div>` : ''}
+            ${product.status === 'NEW' ? `<div class="product-badge">Новинка</div>` : ''}
+            ${product.status === 'FEATURED' ? `<div class="product-badge">Рекомендуем</div>` : ''}
+            <div class="product-rating" data-product-id="${product.id}">
+              ${product.averageRating && product.averageRating > 0 ?
                     `<div class="stars-container">
-                                ${Array.from({length: 5}, (_, i) => `
-                                    <span class="star" style="--rating: ${i + 1 <= product.averageRating ? 1 : (i < product.averageRating ? product.averageRating - i : 0)}">
-                                        <i class="fas fa-star"></i>
-                                    </span>`).join('')}
-                            </div>
-                            <span>(${product.ratingsCount || 0})</span>` :
-                    `<span class="no-rating">Нет отзывов</span>`}
-                    </div>
-                    <div class="product-actions">
-                        <div class="cart-controls">
-                            ${isAuthenticated ?
-                    `<button class="add-to-cart" data-product-id="${product.id}">
-                                    <i class="fas fa-cart-plus"></i> В корзину
-                                </button>` :
-                    `<div class="add-to-cart">
-                                    <a href="/auth/login" style="color: white; text-decoration: none;">
-                                        <i class="fas fa-cart-plus"></i> Войти, чтобы добавить
-                                    </a>
-                                </div>`}
-                        </div>
-                        <button class="wishlist-btn" data-product-id="${product.id}" ${isAuthenticated ? '' : 'class="disabled" disabled'}>
-                            <i class="far fa-heart"></i>
-                        </button>
-                    </div>
+                  ${Array.from({length: 5}, (_, i) => `
+                    <span class="star" style="--rating: ${i + 1 <= product.averageRating ? 1 : (i < product.averageRating ? product.averageRating - i : 0)}">
+                      <i class="fas fa-star"></i>
+                    </span>`).join('')}
                 </div>
-            `;
+                <span>(${product.ratingsCount || 0})</span>` :
+                    `<span class="no-rating">Нет отзывов</span>`}
+            </div>
+            <div class="product-actions">
+              <div class="cart-controls">
+                ${document.querySelector('[th\\:if="${isAuthenticated}"]') ?
+                    `<button class="add-to-cart" data-product-id="${product.id}">
+                    <i class="fas fa-cart-plus"></i> В корзину
+                  </button>` :
+                    `<div class="add-to-cart">
+                    <a href="/auth/login" style="color: white; text-decoration: none;">
+                      <i class="fas fa-cart-plus"></i> Войти, чтобы добавить
+                    </a>
+                  </div>`}
+              </div>
+              <button class="wishlist-btn">
+                <i class="far fa-heart"></i>
+              </button>
+            </div>
+          </div>
+        `;
                 productsContainer.appendChild(productCard);
             });
         }
 
-        // Обновление пагинации
         function updatePagination(currentPage, totalPages) {
             const pagination = document.querySelector('.pagination');
             if (!pagination) return;
             const category = categorySelect.value || '';
             pagination.innerHTML = totalPages <= 1 ? '' : `
-            <a href="/products?page=${currentPage - 1}&search=${encodeURIComponent(searchInput.value)}&category=${encodeURIComponent(category)}"
-               class="${currentPage <= 0 ? 'disabled' : ''}" aria-label="Previous">«</a>
-            ${Array.from({length: totalPages}, (_, i) => `
-                <a href="/products?page=${i}&search=${encodeURIComponent(searchInput.value)}&category=${encodeURIComponent(category)}"
-                   class="${i === currentPage ? 'active' : ''}">${i + 1}</a>
-            `).join('')}
-            <a href="/products?page=${currentPage + 1}&search=${encodeURIComponent(searchInput.value)}&category=${encodeURIComponent(category)}"
-               class="${currentPage >= totalPages - 1 ? 'disabled' : ''}" aria-label="Next">»</a>
-        `;
+        <a href="/products?page=${currentPage - 1}&search=${encodeURIComponent(searchInput.value)}&category=${encodeURIComponent(category)}"
+           class="${currentPage <= 0 ? 'disabled' : ''}" aria-label="Previous">«</a>
+        ${Array.from({length: totalPages}, (_, i) => `
+          <a href="/products?page=${i}&search=${encodeURIComponent(searchInput.value)}&category=${encodeURIComponent(category)}"
+             class="${i === currentPage ? 'active' : ''}">${i + 1}</a>
+        `).join('')}
+        <a href="/products?page=${currentPage + 1}&search=${encodeURIComponent(searchInput.value)}&category=${encodeURIComponent(category)}"
+           class="${currentPage >= totalPages - 1 ? 'disabled' : ''}" aria-label="Next">»</a>
+      `;
         }
 
-        // Синхронизация категории
+        // Синхронизация категории при загрузке страницы
         const urlParams = new URLSearchParams(window.location.search);
         const selectedCategory = urlParams.get('category') || '';
         if (selectedCategory) {
             categorySelect.value = selectedCategory;
         }
-
-        // Привязка обработчиков
-        await initializeCartButtons();
-        initializeWishlistButtons();
-        attachCartHandlers();
-        attachWishlistHandlers();
-        searchInput.form.addEventListener('submit', searchProducts);
     });
 </script>
 </body>

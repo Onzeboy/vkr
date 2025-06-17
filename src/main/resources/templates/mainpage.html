@@ -261,29 +261,8 @@
       margin-bottom: 1rem;
     }
 
-    .stars-container {
-      display: flex;
-      align-items: center;
-      gap: 0.3rem;
-    }
-
-    .star {
-      position: relative;
-      display: inline-block;
-      width: 0.9rem;
-      height: 0.9rem;
-      color: #1a1a1a;
-    }
-
-    .star i {
-      position: absolute;
-      top: 0;
-      left: 0;
+    .product-rating i {
       color: #ffc107;
-      clip-path: inset(0 calc(100% - (var(--rating) * 100%)) 0 0);
-    }
-
-    .star i.fas.fa-star {
       font-size: 0.9rem;
     }
 
@@ -319,37 +298,6 @@
 
     .add-to-cart.in-cart {
       background-color: #4CAF50;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 0.6rem 1rem;
-    }
-
-    .add-to-cart.in-cart .cart-minus,
-    .add-to-cart.in-cart .cart-plus {
-      background: rgba(255, 255, 255, 0.2);
-      border: none;
-      color: white;
-      width: 24px;
-      height: 24px;
-      border-radius: 4px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-    }
-
-    .add-to-cart.in-cart .cart-minus:hover,
-    .add-to-cart.in-cart .cart-plus:hover {
-      background: rgba(255, 255, 255, 0.3);
-    }
-
-    .add-to-cart.in-cart .cart-quantity {
-      font-weight: 600;
-      min-width: 20px;
-      text-align: center;
     }
 
     .quantity-controls {
@@ -401,7 +349,6 @@
       color: var(--gray);
       cursor: pointer;
       transition: var(--transition);
-      position: relative;
     }
 
     .wishlist-btn:hover {
@@ -410,38 +357,6 @@
 
     .wishlist-btn.active {
       color: var(--danger);
-    }
-
-    .wishlist-btn.active i {
-      animation: heart-fill 0.3s ease forwards;
-    }
-
-    .wishlist-btn:not(.active) i {
-      animation: heart-empty 0.3s ease forwards;
-    }
-
-    @keyframes heart-fill {
-      0% {
-        transform: scale(1);
-      }
-      50% {
-        transform: scale(1.3);
-      }
-      100% {
-        transform: scale(1);
-      }
-    }
-
-    @keyframes heart-empty {
-      0% {
-        transform: scale(1);
-      }
-      50% {
-        transform: scale(0.8);
-      }
-      100% {
-        transform: scale(1);
-      }
     }
 
     .catalog-card {
@@ -543,10 +458,97 @@
         grid-column: auto;
       }
     }
+
+    .add-to-cart.in-cart {
+      background-color: #4CAF50;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0.6rem 1rem;
+    }
+
+    .add-to-cart.in-cart .cart-minus,
+    .add-to-cart.in-cart .cart-plus {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+
+    .add-to-cart.in-cart .cart-minus:hover,
+    .add-to-cart.in-cart .cart-plus:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .add-to-cart.in-cart .cart-quantity {
+      font-weight: 600;
+      min-width: 20px;
+      text-align: center;
+    }
+    .stars-container {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .star {
+      position: relative;
+      display: inline-block;
+      width: 0.9rem;
+      height: 0.9rem;
+      color: #1a1a1a;
+    }
+
+    .star i {
+      position: absolute;
+      top: 0;
+      left: 0;
+      color: #ffc107; /* Цвет заполненной звезды */
+      clip-path: inset(0 calc(100% - (var(--rating) * 100%)) 0 0);
+    }
+
+    .star i.fas.fa-star {
+      font-size: 0.9rem;
+    }
   </style>
 </head>
 <body>
-<div th:replace="~{fragments/header :: header}"></div>
+<header>
+  <div class="header-container">
+    <a href="/" class="logo">
+      <i class="fas fa-store"></i>
+      <span>Premium Store</span>
+    </a>
+    <nav class="header-nav">
+      <a href="/products">Товары</a>
+      <a href="#">Продукты</a>
+      <a href="#">Новинки</a>
+      <a href="#delivery">Доставка</a>
+      <a href="#contacts">Контакты</a>
+    </nav>
+    <div class="header-actions">
+      <a th:href="@{/auth/login}" th:if="${!isAuthenticated}">
+        <i class="fas fa-user"></i> Войти
+      </a>
+      <a th:href="@{/auth/logout}" th:if="${isAuthenticated}">
+        <i class="fas fa-sign-out-alt"></i> Выйти
+      </a>
+      <a href="/cart" class="cart-btn">
+        <i class="fas fa-shopping-cart"></i>
+        <span class="cart-count" th:text="${cartCount}">0</span>
+      </a>
+    </div>
+  </div>
+</header>
 
 <main class="main-content">
   <div class="cards-container">
@@ -583,9 +585,9 @@
           <th:block th:if="${product.averageRating != null and product.averageRating > 0}">
             <div class="stars-container">
               <th:block th:each="i : ${#numbers.sequence(1, 5)}">
-                <span class="star" th:style="${'--rating: ' + (i <= product.averageRating ? 1 : (i - 1 < product.averageRating ? product.averageRating - (i - 1) : 0))}">
-                  <i class="fas fa-star"></i>
-                </span>
+        <span class="star" th:style="${'--rating: ' + (i <= product.averageRating ? 1 : (i - 1 < product.averageRating ? product.averageRating - (i - 1) : 0))}">
+          <i class="fas fa-star"></i>
+        </span>
               </th:block>
             </div>
             <span th:text="'(' + ${product.ratingsCount != null ? product.ratingsCount : 0} + ')'"></span>
@@ -610,7 +612,7 @@
               <button class="quantity-btn plus"><i class="fas fa-plus"></i></button>
             </div>
           </div>
-          <button class="wishlist-btn" th:data-product-id="${product.id}" th:classappend="${isAuthenticated} ? '' : 'disabled'" th:disabled="${!isAuthenticated}">
+          <button class="wishlist-btn">
             <i class="far fa-heart"></i>
           </button>
         </div>
@@ -628,17 +630,14 @@
   document.addEventListener('DOMContentLoaded', async function() {
     const MAX_QUANTITY = 10;
     const cartButtons = document.querySelectorAll('.add-to-cart');
-    const wishlistButtons = document.querySelectorAll('.wishlist-btn');
     const cartCount = document.querySelector('.cart-count');
 
     let cartItems = [];
     let stockQuantities = {};
-    let wishlistItems = [];
 
-    // Загрузка корзины, остатков и избранного
-    async function initializeData() {
+    // Загрузка корзины и остатков
+    async function initializeCart() {
       try {
-        // Загрузка корзины
         const cartResponse = await fetch('/api/cart/items', {
           headers: { 'Accept': 'application/json' }
         });
@@ -650,7 +649,6 @@
           cartCount.textContent = '0';
         }
 
-        // Загрузка остатков
         const stockResponse = await fetch('/api/products/stock', {
           headers: { 'Accept': 'application/json' }
         });
@@ -662,16 +660,6 @@
         } else {
           console.warn('Не удалось загрузить данные об остатках:', stockResponse.status);
         }
-
-        // Загрузка избранного
-        const wishlistResponse = await fetch('/user/api/items', {
-          headers: { 'Accept': 'application/json' }
-        });
-        if (wishlistResponse.ok) {
-          wishlistItems = await wishlistResponse.json();
-        } else {
-          console.warn('Не удалось загрузить избранное:', wishlistResponse.status);
-        }
       } catch (error) {
         console.error('Ошибка при загрузке данных:', error);
         cartCount.textContent = '0';
@@ -680,7 +668,7 @@
 
     // Инициализация кнопок корзины
     async function initializeCartButtons() {
-      await initializeData();
+      await initializeCart();
       cartButtons.forEach(button => {
         const productId = button.getAttribute('data-product-id');
         if (!productId) return;
@@ -700,19 +688,7 @@
       });
     }
 
-    // Инициализация кнопок избранного
-    function initializeWishlistButtons() {
-      wishlistButtons.forEach(button => {
-        const productId = parseInt(button.getAttribute('data-product-id'));
-        if (wishlistItems.includes(productId)) {
-          button.classList.add('active');
-          button.querySelector('i').classList.replace('far', 'fas');
-        }
-      });
-    }
-
-    await initializeCartButtons();
-    initializeWishlistButtons();
+    initializeCartButtons();
 
     // Обработка кликов по кнопке "В корзину"
     cartButtons.forEach(button => {
@@ -752,48 +728,7 @@
       });
     });
 
-    // Обработка кликов по кнопке избранного
-    wishlistButtons.forEach(button => {
-      button.addEventListener('click', async function(e) {
-        e.preventDefault();
-        if (this.classList.contains('disabled')) {
-          window.location.href = '/auth/login';
-          return;
-        }
-
-        const productId = parseInt(this.getAttribute('data-product-id'));
-        const isActive = this.classList.contains('active');
-        const icon = this.querySelector('i');
-
-        try {
-          const response = await fetch(`/user/api/${isActive ? 'remove' : 'add'}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ productId })
-          });
-
-          if (response.ok) {
-            if (isActive) {
-              this.classList.remove('active');
-              icon.classList.replace('fas', 'far');
-              wishlistItems = wishlistItems.filter(id => id !== productId);
-            } else {
-              this.classList.add('active');
-              icon.classList.replace('far', 'fas');
-              wishlistItems.push(productId);
-            }
-          } else {
-            const errorText = await response.text();
-            alert(errorText || `Ошибка при ${isActive ? 'удалении из' : 'добавлении в'} избранное`);
-          }
-        } catch (error) {
-          console.error(`Ошибка при ${isActive ? 'удалении из' : 'добавлении в'} избранное:`, error);
-          alert('Произошла ошибка');
-        }
-      });
-    });
-
-    // Обработка изменения количества в корзине
+    // Обработка изменения количества
     document.addEventListener('click', async function(e) {
       const target = e.target.closest('.cart-minus') || e.target.closest('.cart-plus');
       if (!target) return;

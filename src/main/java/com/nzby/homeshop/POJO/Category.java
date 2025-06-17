@@ -10,10 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Entity
-@Table(name = "categories", indexes = {
-        @Index(name = "idx_categories_name", columnList = "category_name"),
-        @Index(name = "idx_categories_parent_id", columnList = "parent_id")
-})
+@Table(name = "categories")
 public class Category {
 
     @Id

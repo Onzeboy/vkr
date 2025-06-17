@@ -9,9 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "support_tickets", indexes = {
-        @Index(name = "idx_support_tickets_user_id", columnList = "user_id")
-})
+@Table(name = "support_tickets")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
