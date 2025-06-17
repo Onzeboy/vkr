@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>История тикетов техподдержки - Premium Store</title>
+    <title>История тикетов техподдержки - Доставка</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
@@ -18,11 +18,10 @@
             --gray: #6c757d;
             --light-gray: #e9ecef;
         }
-
         body {
             padding-top: 4.5rem;
+            font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
         }
-
         .status-open { color: #10b981; font-weight: 600; }
         .status-closed { color: #ef4444; font-weight: 600; }
         .fade-in { animation: fadeIn 0.5s ease-in; }
@@ -30,7 +29,6 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
         .spinner {
             display: inline-block;
             width: 1rem;
@@ -43,7 +41,6 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-
         .toast {
             position: fixed;
             bottom: 1rem;
@@ -51,7 +48,6 @@
             z-index: 2000;
             transition: all 0.3s ease;
         }
-
         @media (max-width: 640px) {
             .table-container { overflow-x: auto; }
             .ticket-card { flex-direction: column; align-items: flex-start; }
@@ -61,12 +57,19 @@
 <body class="bg-gray-100 font-sans">
 <header class="fixed top-0 left-0 w-full bg-white shadow-md border border-gray-200 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center py-3">
-        <a href="/admin/chat" class="flex items-center space-x-2 text-xl font-bold text-gray-800 hover:text-gray-600">
+        <a href="/" class="flex items-center space-x-2 text-xl font-bold text-gray-800 hover:text-gray-600">
             <i class="fas fa-headset text-gray-500"></i>
-            <span>Premium Store - Админ</span>
+            <span>Доставка - Админ</span>
         </a>
         <div class="flex items-center space-x-4">
-            <a href="/admin/ticket-history" class="text-gray-600 hover:text-gray-800 font-medium">История тикетов</a>
+            <a href="/admin/chat" class="text-gray-600 hover:text-gray-800 font-medium flex items-center space-x-1">
+                <i class="fas fa-comment-dots"></i>
+                <span>Активные тикеты</span>
+            </a>
+            <a href="/" class="text-gray-600 hover:text-gray-800 font-medium flex items-center space-x-1">
+                <i class="fas fa-cog"></i>
+                <span>Админ панель</span>
+            </a>
             <a href="/logout" class="text-gray-600 hover:text-gray-800 font-medium flex items-center space-x-1">
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Выйти</span>

@@ -494,34 +494,7 @@
     </style>
 </head>
 <body>
-<header>
-    <div class="header-container">
-        <a href="/" class="logo">
-            <i class="fas fa-store"></i>
-            <span>Premium Store</span>
-        </a>
-        <nav class="header-nav">
-            <a href="/products">Товары</a>
-            <a href="#">Продукты</a>
-            <a href="#">Новинки</a>
-            <a href="/chat">Поддержка</a>
-            <a href="#delivery">Доставка</a>
-            <a href="#contacts">Контакты</a>
-        </nav>
-        <div class="header-actions">
-            <a th:href="@{/auth/login}" th:if="${!isAuthenticated}">
-                <i class="fas fa-user"></i> Войти
-            </a>
-            <a th:href="@{/auth/logout}" th:if="${isAuthenticated}">
-                <i class="fas fa-sign-out-alt"></i> Выйти
-            </a>
-            <a href="/cart" class="cart-btn">
-                <i class="fas fa-shopping-cart"></i>
-                <span class="cart-count" th:text="${cartCount}">0</span>
-            </a>
-        </div>
-    </div>
-</header>
+<div th:replace="~{fragments/header :: header}"></div>
 
 <main class="main-content">
     <div class="tickets-container">

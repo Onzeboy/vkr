@@ -1,13 +1,17 @@
 package com.nzby.homeshop.Controllers;
 
+import com.nzby.homeshop.DTO.OrderStatusDTO;
 import com.nzby.homeshop.POJO.Address;
 import com.nzby.homeshop.POJO.CartItem;
+import com.nzby.homeshop.POJO.Enum.OrderStatus;
 import com.nzby.homeshop.POJO.Order;
 import com.nzby.homeshop.POJO.User;
 import com.nzby.homeshop.Services.CartService;
 import com.nzby.homeshop.Services.OrderService;
 import com.nzby.homeshop.Services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -16,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDateTime;
@@ -95,8 +100,7 @@ public class OrderController {
 
         User user;
         try {
-            user = userService.findByEmail(userDetails.getUsername())
-                    .orElseThrow(() -> new IllegalStateException("Пользователь не найден"));
+            user = userService.findByEmail(userDetails.getUsername());
             logger.debug("Пользователь найден: {}", user.getEmail());
         } catch (IllegalStateException e) {
             logger.error("Ошибка при поиске пользователя: {}", e.getMessage());
@@ -152,18 +156,27 @@ public class OrderController {
         // Получаем все заказы пользователя с изображениями
         List<Order> allOrders = orderService.getOrdersWithImages(user);
 
-        // Разделяем заказы на активные и завершённые
-        List<Order> activeOrders = allOrders.stream()
-                .filter(order -> !order.getStatus().equals("COMPLETED"))
+        // Разделяем заказы:
+        // 1. В завершенные (только DELIVERED)
+        List<Order> lastCompletedOrders = allOrders.stream()
+                .filter(order -> order.getStatus() != null
+                        && order.getStatus().equals(OrderStatus.DELIVERED))
+                .sorted((o1, o2) -> o2.getCreatedAt().compareTo(o1.getCreatedAt()))
+                .limit(3)
                 .collect(Collectors.toList());
 
-        List<Order> lastCompletedOrders = allOrders.stream()
-                .filter(order -> order.getStatus().equals("COMPLETED"))
-                .sorted((o1, o2) -> o2.getCreatedAt().compareTo(o1.getCreatedAt())) // Сортировка по дате (новые сверху)
-                .limit(3) // Ограничиваем до 3
+        // 2. В активные (все кроме CANCELLED и DELIVERED)
+        List<Order> activeOrders = allOrders.stream()
+                .filter(order -> order.getStatus() != null
+                        && !order.getStatus().equals(OrderStatus.CANCELLED)
+                        && !order.getStatus().equals(OrderStatus.DELIVERED))
                 .collect(Collectors.toList());
 
         // Добавляем в модель
+        logger.debug("Все заказы пользователя {}: {}", user.getId(), allOrders);
+        logger.debug("Активные заказы: {}", activeOrders);
+        logger.debug("Завершенные заказы: {}", lastCompletedOrders);
+
         model.addAttribute("activeOrders", activeOrders);
         model.addAttribute("lastCompletedOrders", lastCompletedOrders);
         model.addAttribute("cartCount", cartService.getCartItemsCount(user));
@@ -176,8 +189,7 @@ public class OrderController {
             return "redirect:/auth/login";
         }
 
-        User user = userService.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new IllegalStateException("Пользователь не найден"));
+        User user = userService.findByEmail(userDetails.getUsername());
 
         Order order = orderService.getOrderWithDetails(id, user)
                 .orElseThrow(() -> new IllegalStateException("Заказ не найден"));
@@ -186,5 +198,44 @@ public class OrderController {
         model.addAttribute("cartCount", cartService.getCartItemsCount(user));
 
         return "order-details";
+    }
+    @PostMapping("/{id}/cancel")
+    public String cancelOrder(@PathVariable Long id, @AuthenticationPrincipal UserDetails userDetails, RedirectAttributes redirectAttributes) {
+        if (userDetails == null) {
+            return "redirect:/auth/login";
+        }
+
+        User user = userService.findByEmail(userDetails.getUsername());
+        try {
+            orderService.cancelOrder(id, user);
+            redirectAttributes.addFlashAttribute("successMessage", "Заказ #" + id + " успешно отменен");
+        } catch (IllegalArgumentException e) {
+            logger.error("Ошибка при отмене заказа {}: {}", id, e.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        } catch (IllegalStateException e) {
+            logger.error("Заказ {} не найден или не принадлежит пользователю: {}", id, e.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", "Заказ не найден или не может быть отменен");
+        }
+        return "redirect:/orders";
+    }
+
+    @PostMapping("/{id}/repeat")
+    public String repeatOrder(@PathVariable Long id, @AuthenticationPrincipal UserDetails userDetails, RedirectAttributes redirectAttributes) {
+        if (userDetails == null) {
+            return "redirect:/auth/login";
+        }
+
+        User user = userService.findByEmail(userDetails.getUsername());
+        try {
+            orderService.repeatOrder(id, user);
+            redirectAttributes.addFlashAttribute("successMessage", "Товары из заказа #" + id + " добавлены в корзину");
+        } catch (IllegalArgumentException e) {
+            logger.error("Ошибка при повторении заказа {}: {}", id, e.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        } catch (IllegalStateException e) {
+            logger.error("Заказ {} не найден или не принадлежит пользователю: {}", id, e.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", "Заказ не найден или не может быть повторен");
+        }
+        return "redirect:/cart";
     }
 }

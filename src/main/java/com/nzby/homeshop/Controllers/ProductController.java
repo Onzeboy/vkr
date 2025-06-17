@@ -11,6 +11,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Role;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -37,56 +38,44 @@ import java.util.stream.Collectors;
 @Controller
 @RequestMapping("/products")
 public class ProductController {
+    @Autowired
+    private  ProductService productService;
+    @Autowired
+    private  UserService userService;
+    @Autowired
+    private  ReviewService reviewService;
+    @Autowired
+    private  CartService cartService;
 
-    private final ProductService productService;
-    private final UserService userService;
-    private final ReviewService reviewService;
-    private final CartService cartService;
-
-    public ProductController(ProductService productService, UserService userService, ReviewService reviewService, CartService cartService) {
-        this.productService = productService;
-        this.userService = userService;
-        this.reviewService = reviewService;
-        this.cartService = cartService;
-    }
 
     @GetMapping("/{id}")
     @Transactional
-    public String showProduct(@PathVariable Long id, Model model) {
-        // Загружаем продукт
+    public String showProduct(@PathVariable Long id, Model model, Authentication authentication) {
         Product product = productService.findProductById(id);
         if (product == null) {
             model.addAttribute("errorMessage", "Продукт не найден");
             return "product-details";
         }
 
-        // Получаем отсортированные изображения
         List<ProductImage> sortedImages = productService.getSortedImagesForProduct(id);
-
-        // Синхронизируем product.images с sortedImages
         if (product.getImages() != null) {
             product.getImages().clear();
             product.getImages().addAll(sortedImages);
         } else {
-            // Если коллекция не инициализирована, создаём новый список
             product.setImages(sortedImages);
         }
 
-        // Выбираем основное изображение
         ProductImage primaryImage = productService.getPrimaryImage(sortedImages);
-
-        // Загружаем и сортируем отзывы по voteScore
         List<Review> reviews = reviewService.findByProductId(id);
         if (reviews != null && !reviews.isEmpty()) {
             reviews.sort((r1, r2) -> {
                 Long score1 = reviewService.getVoteScore(r1);
                 Long score2 = reviewService.getVoteScore(r2);
-                return score2.compareTo(score1); // Сортировка по убыванию
+                return score2.compareTo(score1);
             });
             reviews = reviews.stream().limit(3).collect(Collectors.toList());
         }
 
-        // Рассчитываем voteScore для каждого отзыва
         Map<Long, Long> voteScores = new HashMap<>();
         Map<Long, Integer> userVote = new HashMap<>();
         for (Review review : reviews) {
@@ -100,6 +89,7 @@ public class ProductController {
             }
         }
 
+        model.addAttribute("isAuthenticated", userService.isAuthenticated(authentication));
         model.addAttribute("product", product);
         model.addAttribute("primaryImage", primaryImage);
         model.addAttribute("categoryFields", product.getCategory() != null ? product.getCategory().getProductFields() : new HashMap<>());
@@ -112,7 +102,7 @@ public class ProductController {
 
     @GetMapping("/reviews/{id}")
     @Transactional
-    public String showAllReviews(@PathVariable Long id, @RequestParam(defaultValue = "1") int page, Model model) {
+    public String showAllReviews(@PathVariable Long id, @RequestParam(defaultValue = "1") int page, Model model,Authentication authentication) {
         Product product = productService.findProductById(id);
         if (product == null) {
             model.addAttribute("errorMessage", "Продукт не найден");
@@ -148,6 +138,7 @@ public class ProductController {
             }
         }
 
+        model.addAttribute("isAuthenticated", userService.isAuthenticated(authentication));
         model.addAttribute("product", product);
         model.addAttribute("primaryImage", primaryImage);
         model.addAttribute("categoryFields", product.getCategory() != null ? product.getCategory().getProductFields() : new HashMap<>());
@@ -191,9 +182,7 @@ public class ProductController {
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "category", required = false) String category,
-            Model model) {
-
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            Model model, Authentication authentication) {
 
         Page<Product> pageProducts = productService.findProducts(search, category, page);
         model.addAttribute("pageProducts", pageProducts.getContent());
@@ -201,8 +190,30 @@ public class ProductController {
         model.addAttribute("currentPage", page);
         model.addAttribute("allCategories", productService.findAllCategories());
         model.addAttribute("allTags", productService.findAllCategories());
-        model.addAttribute("isAuthenticated", auth.isAuthenticated());
+        model.addAttribute("isAuthenticated", userService.isAuthenticated(authentication));
         model.addAttribute("cartCount", cartService.getCartItemsCount(userService.getCurrentUser()));
+        return "all";
+    }
+    @GetMapping("/wishlist")
+    public String showWishlist(
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "category", required = false) String category,
+            Model model, Authentication authentication) {
+
+        User currentUser = userService.getCurrentUser();
+        if (currentUser == null) {
+            return "redirect:/auth/login";
+        }
+
+        Page<Product> pageProducts = productService.getWishlistProductsPaginated(currentUser, page, 9, search, category);
+        model.addAttribute("pageProducts", pageProducts.getContent());
+        model.addAttribute("totalPages", pageProducts.getTotalPages());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("allCategories", productService.findAllCategories());
+        model.addAttribute("allTags", productService.findAllCategories()); // Для совместимости с шаблоном
+        model.addAttribute("isAuthenticated", userService.isAuthenticated(authentication));
+        model.addAttribute("cartCount", cartService.getCartItemsCount(currentUser));
         return "all";
     }
 }

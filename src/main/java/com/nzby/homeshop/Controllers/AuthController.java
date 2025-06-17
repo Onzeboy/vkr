@@ -45,12 +45,17 @@ public class AuthController {
     @GetMapping("/login")
     public String showLoginPage(@RequestParam(required = false) String error,
                                 @RequestParam(required = false) String logout,
+                                @RequestParam(required = false) String expired,
                                 Model model) {
+
         if (error != null) {
             model.addAttribute("error", "Неверный email или пароль");
         }
         if (logout != null) {
             model.addAttribute("message", "Вы успешно вышли из системы");
+        }
+        if (expired != null) {
+            model.addAttribute("error", "Ваша сессия истекла. Пожалуйста, войдите снова.");
         }
         return "auth/login";
     }

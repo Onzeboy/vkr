@@ -413,6 +413,37 @@
         .wishlist-btn.active {
             color: var(--danger);
         }
+        .wishlist-btn.active i {
+            animation: heart-fill 0.3s ease forwards;
+        }
+
+        .wishlist-btn:not(.active) i {
+            animation: heart-empty 0.3s ease forwards;
+        }
+
+        @keyframes heart-fill {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.3);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes heart-empty {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(0.8);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
 
         .additional-info {
             margin-top: 2rem;
@@ -897,27 +928,7 @@
     </style>
 </head>
 <body>
-<header>
-    <div class="header-container">
-        <div class="logo" onclick="window.location.href='/'">
-            <i class="fas fa-store"></i>
-            <span>Premium Store</span>
-        </div>
-        <nav class="header-nav">
-            <a href="/products">Каталог</a>
-            <a href="#">Акции</a>
-            <a href="#">Новинки</a>
-            <a href="#">Доставка</a>
-            <a href="#">Контакты</a>
-        </nav>
-        <div class="header-actions">
-            <a href="/cart" class="cart-btn">
-                <i class="fas fa-shopping-cart"></i>
-                <span class="cart-count" th:text="${cartCount}">0</span>
-            </a>
-        </div>
-    </div>
-</header>
+<div th:replace="~{fragments/header :: header}"></div>
 
 <main class="main-content">
     <div th:if="${errorMessage}" class="error-message" th:text="${errorMessage}">
@@ -995,7 +1006,7 @@
                             <button class="quantity-btn plus"><i class="fas fa-plus"></i></button>
                         </div>
                     </div>
-                    <button class="wishlist-btn">
+                    <button class="wishlist-btn" th:data-product-id="${product.id}" th:classappend="${isAuthenticated} ? '' : 'disabled'" th:disabled="${!isAuthenticated}">
                         <i class="far fa-heart"></i>
                     </button>
                 </div>
@@ -1029,7 +1040,11 @@
 
         <div class="reviews-section" style="width: 100%;" th:data-product-id="${product.id}">
             <div class="reviews-header">
-                <h3>Отзывы</h3>
+                <h3>
+                    <a th:href="@{/products/reviews/{id}(id=${product.id})}" style="text-decoration: none; color: inherit;">
+                        Отзывы
+                    </a>
+                </h3>
                 <span class="average-rating" th:if="${product.averageRating != null and product.ratingsCount > 0}">
                     Средняя оценка: <span th:text="${#numbers.formatDecimal(product.averageRating, 1, 1)}"></span> (<span th:text="${product.ratingsCount}"></span> отзывов)
                 </span>
@@ -1251,7 +1266,7 @@
 </main>
 
 <script>
-    // Функция для модального окна изображений
+    // Модальное окно для изображений
     function openModal(imageSrc) {
         console.log('Открытие модального окна с imageSrc:', imageSrc);
         const modal = document.getElementById('imageModal');
@@ -1278,7 +1293,7 @@
         }
     }
 
-    // Определение carouselData для Alpine.js
+    // Карусель для Alpine.js
     window.carouselData = function() {
         return {
             currentIndex: 0,
@@ -1292,19 +1307,11 @@
                 }
             },
             prevSlide() {
-                if (this.currentIndex > 0) {
-                    this.currentIndex--;
-                } else {
-                    this.currentIndex = this.totalImages - 1;
-                }
+                this.currentIndex = this.currentIndex > 0 ? this.currentIndex - 1 : this.totalImages - 1;
                 this.resetAutoScroll();
             },
             nextSlide() {
-                if (this.currentIndex < this.totalImages - 1) {
-                    this.currentIndex++;
-                } else {
-                    this.currentIndex = 0;
-                }
+                this.currentIndex = this.currentIndex < this.totalImages - 1 ? this.currentIndex + 1 : 0;
                 this.resetAutoScroll();
             },
             goToSlide(index) {
@@ -1314,8 +1321,8 @@
             resetAutoScroll() {
                 if (this.autoScroll) {
                     clearInterval(this.autoScroll);
+                    this.autoScroll = setInterval(() => this.nextSlide(), 5000);
                 }
-                this.autoScroll = setInterval(() => this.nextSlide(), 5000);
             },
             beforeDestroy() {
                 if (this.autoScroll) {
@@ -1325,82 +1332,23 @@
         };
     };
 
-    document.addEventListener('DOMContentLoaded', function() {
-        // Обработка кликов по изображениям отзывов
-        const reviewImages = document.querySelectorAll('.review-image');
-        reviewImages.forEach(function(image) {
-            image.addEventListener('click', function() {
-                const imageSrc = image.getAttribute('data-modal-src');
-                if (imageSrc) {
-                    openModal(imageSrc);
-                } else {
-                    console.error('Атрибут data-modal-src не найден для изображения');
-                }
-            });
-        });
-
-        // Обработка голосования за отзывы
-        const voteButtons = document.querySelectorAll('.vote-button');
-        voteButtons.forEach(button => {
-            button.addEventListener('click', function(e) {
-                e.preventDefault();
-                const reviewId = this.getAttribute('data-review-id');
-                const vote = this.classList.contains('upvote') ? 1 : -1;
-                const isActive = this.classList.contains('active');
-                const voteValue = isActive ? 0 : vote;
-
-                fetch(`/api/reviews/${reviewId}/vote`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: `vote=${voteValue}`
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            const voteContainer = this.parentElement;
-                            const voteCountElement = voteContainer.querySelector('.vote-count');
-                            voteCountElement.textContent = data.voteScore;
-                            updateVoteCountStyle(voteCountElement, data.voteScore);
-
-                            const upvoteButton = voteContainer.querySelector('.upvote');
-                            const downvoteButton = voteContainer.querySelector('.downvote');
-                            upvoteButton.classList.toggle('active', data.userVote === 1);
-                            downvoteButton.classList.toggle('active', data.userVote === -1);
-                        } else {
-                            alert(data.message || 'Ошибка при голосовании');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Ошибка голосования:', error);
-                        alert('Произошла ошибка при голосовании');
-                    });
-            });
-        });
-
-        function updateVoteCountStyle(element, voteScore) {
-            element.classList.remove('positive', 'neutral', 'negative');
-            if (voteScore > 0) {
-                element.classList.add('positive');
-            } else if (voteScore < 0) {
-                element.classList.add('negative');
-            } else {
-                element.classList.add('neutral');
-            }
-        }
-
-        // Функциональность корзины
-        const MAX_QUANTITY = 10;
+    document.addEventListener('DOMContentLoaded', async function() {
+        // Инициализация элементов
         const cartButtons = document.querySelectorAll('.add-to-cart');
+        const wishlistButtons = document.querySelectorAll('.wishlist-btn');
+        const voteButtons = document.querySelectorAll('.vote-button');
+        const reviewImages = document.querySelectorAll('.review-image');
         const cartCount = document.querySelector('.cart-count');
+        const MAX_QUANTITY = 10;
 
         let cartItems = [];
+        let wishlistItems = [];
         let stockQuantities = {};
 
-        // Инициализация данных корзины и остатков
-        async function initializeCart() {
+        // Инициализация данных
+        async function initializeData() {
             try {
+                // Корзина
                 const cartResponse = await fetch('/api/cart/items', {
                     headers: { 'Accept': 'application/json' }
                 });
@@ -1408,10 +1356,11 @@
                     cartItems = await cartResponse.json();
                     cartCount.textContent = cartItems.reduce((sum, item) => sum + item.quantity, 0);
                 } else {
-                    console.warn('Не удалось загрузить элементы корзины:', cartResponse.status);
+                    console.warn('Не удалось загрузить корзину:', cartResponse.status);
                     cartCount.textContent = '0';
                 }
 
+                // Остатки
                 const stockResponse = await fetch('/api/products/stock', {
                     headers: { 'Accept': 'application/json' }
                 });
@@ -1421,26 +1370,36 @@
                         stockQuantities[item.productId] = Math.min(item.quantity, MAX_QUANTITY);
                     });
                 } else {
-                    console.warn('Не удалось загрузить данные об остатках:', stockResponse.status);
+                    console.warn('Не удалось загрузить остатки:', stockResponse.status);
+                }
+
+                // Вишлист
+                const wishlistResponse = await fetch('/user/api/items', {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (wishlistResponse.ok) {
+                    wishlistItems = await wishlistResponse.json();
+                } else {
+                    console.warn('Не удалось загрузить вишлист:', wishlistResponse.status);
                 }
             } catch (error) {
-                console.error('Ошибка при загрузке данных:', error);
+                console.error('Ошибка инициализации данных:', error);
                 cartCount.textContent = '0';
             }
         }
 
-        // Инициализация кнопок корзины
+        // Инициализация корзины
         async function initializeCartButtons() {
-            await initializeCart();
+            await initializeData();
             cartButtons.forEach(button => {
                 const productId = button.getAttribute('data-product-id');
-                if (!productId) return;
-
+                if (!productId) {
+                    console.warn('Product ID отсутствует на кнопке корзины');
+                    return;
+                }
                 const cartItem = cartItems.find(item => item.productId == productId);
                 const available = stockQuantities[productId] !== undefined ? Math.min(stockQuantities[productId], MAX_QUANTITY) : MAX_QUANTITY;
-
                 button.setAttribute('data-max-quantity', available);
-
                 if (cartItem) {
                     updateCartButton(button, {
                         cartItemId: cartItem.id,
@@ -1451,119 +1410,228 @@
             });
         }
 
-        initializeCartButtons();
-
-        // Обработка кликов по кнопке "В корзину"
-        cartButtons.forEach(button => {
-            button.addEventListener('click', async function(e) {
-                e.preventDefault();
-                if (this.classList.contains('in-cart')) return;
-
-                const productId = this.getAttribute('data-product-id');
-                const available = parseInt(this.getAttribute('data-max-quantity')) || MAX_QUANTITY;
-
-                if (available <= 0) {
-                    alert('Товара нет в наличии');
+        // Инициализация вишлиста
+        function initializeWishlistButtons() {
+            wishlistButtons.forEach(button => {
+                const productId = parseInt(button.getAttribute('data-product-id'));
+                if (!productId) {
+                    console.warn('Product ID отсутствует на кнопке вишлиста');
                     return;
                 }
-
-                try {
-                    const response = await fetch('/api/cart/add', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ productId, quantity: 1 })
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        updateCartButton(this, data);
-                        cartCount.textContent = data.totalItems;
-                        const newAvailable = available - 1;
-                        this.setAttribute('data-max-quantity', newAvailable >= 0 ? newAvailable : 0);
-                    } else {
-                        const errorText = await response.text();
-                        alert(errorText || 'Ошибка при добавлении товара');
-                    }
-                } catch (error) {
-                    console.error('Ошибка при добавлении в корзину:', error);
-                    alert('Произошла ошибка при добавлении товара в корзину');
+                if (wishlistItems.includes(productId)) {
+                    button.classList.add('active');
+                    button.querySelector('i').classList.replace('far', 'fas');
                 }
             });
-        });
+        }
 
-        // Обработка изменения количества
-        document.addEventListener('click', async function(e) {
-            const target = e.target.closest('.cart-minus') || e.target.closest('.cart-plus');
-            if (!target) return;
-            e.preventDefault();
-            e.stopPropagation();
-
-            const button = target.closest('.add-to-cart');
-            const quantityEl = button.querySelector('.cart-quantity');
-            const plusBtn = button.querySelector('.cart-plus');
-            const currentQuantity = parseInt(quantityEl.textContent);
-            const change = target.classList.contains('cart-minus') ? -1 : 1;
-            const newQuantity = currentQuantity + change;
-            const cartItemId = quantityEl.getAttribute('data-cart-item-id');
-            const maxAvailable = parseInt(button.getAttribute('data-max-quantity')) || MAX_QUANTITY;
-
-            if (newQuantity > MAX_QUANTITY) {
-                alert(`Максимальное количество одного товара: ${MAX_QUANTITY} шт.`);
-                return;
-            }
-
-            if (newQuantity < 1) {
-                if (confirm('Удалить товар из корзины?')) {
+        // Обработчики корзины
+        function attachCartHandlers() {
+            cartButtons.forEach(button => {
+                button.addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    if (this.classList.contains('in-cart')) return;
+                    const productId = this.getAttribute('data-product-id');
+                    const available = parseInt(this.getAttribute('data-max-quantity')) || MAX_QUANTITY;
+                    if (available <= 0) {
+                        alert('Товара нет в наличии');
+                        return;
+                    }
                     try {
-                        const response = await fetch(`/api/cart/remove?cartItemId=${cartItemId}`, {
-                            method: 'DELETE'
+                        const response = await fetch('/api/cart/add', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ productId, quantity: 1 })
                         });
                         if (response.ok) {
                             const data = await response.json();
-                            resetCartButton(button, data.totalItems);
-                            button.setAttribute('data-max-quantity', maxAvailable + 1);
+                            updateCartButton(this, data);
+                            cartCount.textContent = data.totalItems;
+                            this.setAttribute('data-max-quantity', Math.max(available - 1, 0));
                         } else {
-                            alert('Ошибка при удалении товара');
+                            const errorText = await response.text();
+                            alert(errorText || 'Ошибка добавления товара');
                         }
                     } catch (error) {
-                        console.error('Ошибка при удалении товара:', error);
-                        alert('Произошла ошибка при удалении товара');
+                        console.error('Ошибка добавления в корзину:', error);
+                        alert('Ошибка добавления товара');
                     }
+                });
+            });
+
+            document.addEventListener('click', async function(e) {
+                const target = e.target.closest('.cart-minus') || e.target.closest('.cart-plus');
+                if (!target) return;
+                e.preventDefault();
+                e.stopPropagation();
+                const button = target.closest('.add-to-cart');
+                const quantityEl = button.querySelector('.cart-quantity');
+                const plusBtn = button.querySelector('.cart-plus');
+                const currentQuantity = parseInt(quantityEl.textContent);
+                const change = target.classList.contains('cart-minus') ? -1 : 1;
+                const newQuantity = currentQuantity + change;
+                const cartItemId = quantityEl.getAttribute('data-cart-item-id');
+                const maxAvailable = parseInt(button.getAttribute('data-max-quantity')) || MAX_QUANTITY;
+
+                if (newQuantity > MAX_QUANTITY) {
+                    alert(`Максимум ${MAX_QUANTITY} шт.`);
+                    return;
                 }
-            } else {
-                try {
-                    const response = await fetch('/api/cart/update', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ cartItemId, quantity: newQuantity })
-                    });
 
-                    if (response.ok) {
-                        const data = await response.json();
-                        quantityEl.textContent = data.quantity;
-                        cartCount.textContent = data.totalItems;
-                        button.setAttribute('data-max-quantity', maxAvailable - change);
-
-                        if (plusBtn) {
-                            plusBtn.disabled = data.quantity >= maxAvailable;
-                            plusBtn.style.opacity = data.quantity >= maxAvailable ? '0.5' : '1';
-                            plusBtn.title = data.quantity >= maxAvailable ? `Максимальное количество: ${maxAvailable} шт.` : '';
+                if (newQuantity < 1) {
+                    if (confirm('Удалить из корзины?')) {
+                        try {
+                            const response = await fetch(`/api/cart/remove?cartItemId=${cartItemId}`, {
+                                method: 'DELETE'
+                            });
+                            if (response.ok) {
+                                const data = await response.json();
+                                resetCartButton(button, data.totalItems);
+                                button.setAttribute('data-max-quantity', maxAvailable + 1);
+                            } else {
+                                alert('Ошибка удаления товара');
+                            }
+                        } catch (error) {
+                            console.error('Ошибка удаления:', error);
+                            alert('Ошибка удаления товара');
                         }
-                    } else {
-                        const errorText = await response.text();
-                        alert(errorText || 'Ошибка при обновлении количества');
                     }
-                } catch (error) {
-                    console.error('Ошибка при обновлении количества:', error);
-                    alert('Произошла ошибка при обновлении количества');
+                } else {
+                    try {
+                        const response = await fetch('/api/cart/update', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ cartItemId, quantity: newQuantity })
+                        });
+                        if (response.ok) {
+                            const data = await response.json();
+                            quantityEl.textContent = data.quantity;
+                            cartCount.textContent = data.totalItems;
+                            button.setAttribute('data-max-quantity', maxAvailable - change);
+                            if (plusBtn) {
+                                plusBtn.disabled = data.quantity >= maxAvailable;
+                                plusBtn.style.opacity = data.quantity >= maxAvailable ? '0.5' : '1';
+                                plusBtn.title = data.quantity >= maxAvailable ? `Максимум: ${maxAvailable} шт.` : '';
+                            }
+                        } else {
+                            const errorText = await response.text();
+                            alert(errorText || 'Ошибка обновления количества');
+                        }
+                    } catch (error) {
+                        console.error('Ошибка обновления:', error);
+                        alert('Ошибка обновления количества');
+                    }
                 }
-            }
-        });
+            });
+        }
 
+        // Обработчики вишлиста
+        function attachWishlistHandlers() {
+            wishlistButtons.forEach(button => {
+                button.addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    if (this.classList.contains('disabled')) {
+                        window.location.href = '/auth/login';
+                        return;
+                    }
+                    const productId = parseInt(this.getAttribute('data-product-id'));
+                    if (!productId) {
+                        alert('Ошибка: ID продукта не найден');
+                        return;
+                    }
+                    const isActive = this.classList.contains('active');
+                    const icon = this.querySelector('i');
+                    try {
+                        const response = await fetch(`/user/api/${isActive ? 'remove' : 'add'}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ productId })
+                        });
+                        if (response.ok) {
+                            if (isActive) {
+                                this.classList.remove('active');
+                                icon.classList.replace('fas', 'far');
+                                wishlistItems = wishlistItems.filter(id => id !== productId);
+                            } else {
+                                this.classList.add('active');
+                                icon.classList.replace('far', 'fas');
+                                wishlistItems.push(productId);
+                            }
+                        } else {
+                            const errorText = await response.text();
+                            alert(errorText || `Ошибка ${isActive ? 'удаления' : 'добавления'} в избранное`);
+                        }
+                    } catch (error) {
+                        console.error(`Ошибка ${isActive ? 'удаления' : 'добавления'} в вишлист:`, error);
+                        alert('Ошибка');
+                    }
+                });
+            });
+        }
+
+        // Обработчики голосования за отзывы
+        function attachVoteHandlers() {
+            voteButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const reviewId = this.getAttribute('data-review-id');
+                    const vote = this.classList.contains('upvote') ? 1 : -1;
+                    const isActive = this.classList.contains('active');
+                    const voteValue = isActive ? 0 : vote;
+                    fetch(`/api/reviews/${reviewId}/vote`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `vote=${voteValue}`
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                const voteContainer = this.parentElement;
+                                const voteCountElement = voteContainer.querySelector('.vote-count');
+                                voteCountElement.textContent = data.voteScore;
+                                updateVoteCountStyle(voteCountElement, data.voteScore);
+                                const upvoteButton = voteContainer.querySelector('.upvote');
+                                const downvoteButton = voteContainer.querySelector('.downvote');
+                                upvoteButton.classList.toggle('active', data.userVote === 1);
+                                downvoteButton.classList.toggle('active', data.userVote === -1);
+                            } else {
+                                alert(data.message || 'Ошибка голосования');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Ошибка голосования:', error);
+                            alert('Ошибка голосования');
+                        });
+                });
+            });
+        }
+
+        // Обработчики кликов по изображениям отзывов
+        function attachReviewImageHandlers() {
+            reviewImages.forEach(image => {
+                image.addEventListener('click', function() {
+                    const imageSrc = image.getAttribute('data-modal-src');
+                    if (imageSrc) {
+                        openModal(imageSrc);
+                    } else {
+                        console.error('Атрибут data-modal-src не найден');
+                    }
+                });
+            });
+        }
+
+        // Стили для счетчика голосов
+        function updateVoteCountStyle(element, voteScore) {
+            element.classList.remove('positive', 'neutral', 'negative');
+            if (voteScore > 0) element.classList.add('positive');
+            else if (voteScore < 0) element.classList.add('negative');
+            else element.classList.add('neutral');
+        }
+
+        // Обновление кнопки корзины
         function updateCartButton(button, data) {
             const maxAvailable = parseInt(button.getAttribute('data-max-quantity')) || MAX_QUANTITY;
             const actualQuantity = Math.min(data.quantity || 1, maxAvailable);
-
             button.classList.add('in-cart');
             button.innerHTML = `
                 <span class="cart-text">В корзине</span>
@@ -1571,20 +1639,28 @@
                 <span class="cart-quantity" data-cart-item-id="${data.cartItemId}">${actualQuantity}</span>
                 <button class="cart-plus">+</button>
             `;
-
             const plusBtn = button.querySelector('.cart-plus');
             if (plusBtn) {
                 plusBtn.disabled = actualQuantity >= maxAvailable;
                 plusBtn.style.opacity = actualQuantity >= maxAvailable ? '0.5' : '1';
-                plusBtn.title = actualQuantity >= maxAvailable ? `Максимальное количество: ${maxAvailable} шт.` : '';
+                plusBtn.title = actualQuantity >= maxAvailable ? `Максимум: ${maxAvailable} шт.` : '';
             }
         }
 
+        // Сброс кнопки корзины
         function resetCartButton(button, newCartCount) {
             button.classList.remove('in-cart');
             button.innerHTML = '<i class="fas fa-cart-plus"></i> В корзину';
             cartCount.textContent = newCartCount;
         }
+
+        // Инициализация и привязка обработчиков
+        await initializeCartButtons();
+        initializeWishlistButtons();
+        attachCartHandlers();
+        attachWishlistHandlers();
+        attachVoteHandlers();
+        attachReviewImageHandlers();
     });
 </script>
 </body>

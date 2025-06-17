@@ -1,6 +1,7 @@
 package com.nzby.homeshop.Controllers;
 
 import com.nzby.homeshop.POJO.CartItem;
+import com.nzby.homeshop.POJO.Enum.Role;
 import com.nzby.homeshop.POJO.Product;
 import com.nzby.homeshop.POJO.User;
 import com.nzby.homeshop.Repository.UserRepository;
@@ -47,13 +48,15 @@ public class MainController {
                 logger.warn("Пользователь с email {} не найден в базе данных", userDetails.getUsername());
             }
         }
-
-        model.addAttribute("allProducts", productService.getAllProducts());
-        model.addAttribute("cartCount", user != null ? cartService.getCartItemsCount(user) : 0);
-        model.addAttribute("isAuthenticated", userDetails != null);
-        return "mainpage";
+        if (user.getRole() == Role.USER) {
+            model.addAttribute("allProducts", productService.getAllProducts());
+            model.addAttribute("cartCount", user != null ? cartService.getCartItemsCount(user) : 0);
+            model.addAttribute("isAuthenticated", userDetails != null);
+            return "mainpage";
+        } else {
+            return "admin/admin-panel";
+        }
     }
-
     @PostMapping("/api/cart/add")
     @ResponseBody
     public ResponseEntity<?> addToCart(@RequestBody Map<String, Object> request,

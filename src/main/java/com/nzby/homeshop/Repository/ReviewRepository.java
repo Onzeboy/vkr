@@ -18,4 +18,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     @Query("SELECT r FROM Review r WHERE r.product.id = :productId ORDER BY (SELECT COALESCE(SUM(v.vote), 0) FROM ReviewVote v WHERE v.review.id = r.id) DESC")
     Page<Review> findByProductIdOrderByVoteScoreDesc(@Param("productId") Long productId, Pageable pageable);
+
+    Page<Review> findByProductId(Long productId, Pageable pageable);
 }

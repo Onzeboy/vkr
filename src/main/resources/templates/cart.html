@@ -500,33 +500,7 @@
     </style>
 </head>
 <body>
-<header>
-    <div class="header-container">
-        <a href="/" class="logo">
-            <i class="fas fa-store"></i>
-            <span>Premium Store</span>
-        </a>
-        <nav class="header-nav">
-            <a href="/products">Каталог</a>
-            <a href="#">Акции</a>
-            <a href="#">Новинки</a>
-            <a href="#">Доставка</a>
-            <a href="#">Контакты</a>
-        </nav>
-        <div class="header-actions">
-            <a th:href="@{/auth/login}" th:if="${!isAuthenticated}">
-                <i class="fas fa-user"></i> Войти
-            </a>
-            <a th:href="@{/auth/logout}" th:if="${isAuthenticated}">
-                <i class="fas fa-sign-out-alt"></i> Выйти
-            </a>
-            <a href="/cart" class="cart-btn">
-                <i class="fas fa-shopping-cart"></i>
-                <span class="cart-count" th:text="${cartCount}">0</span>
-            </a>
-        </div>
-    </div>
-</header>
+<div th:replace="~{fragments/header :: header}"></div>
 
 <main class="cart-container">
     <h1 class="cart-title">Ваша корзина</h1>
@@ -574,21 +548,21 @@
                     <div class="cart-controls">
                         <div class="quantity-control">
                             <button class="quantity-btn quantity-minus"
-                                    th:disabled="${item.quantity <= 1 or item.ordered}"
+                                    th:disabled="${item.quantity <= 1 or !item.ordered}"
                                     th:data-item-id="${item.id}"
                                     onclick="updateQuantity(this, -1)">
                                 <i class="fas fa-minus"></i>
                             </button>
                             <span class="quantity-value" th:text="${item.quantity}"></span>
                             <button class="quantity-btn quantity-plus"
-                                    th:disabled="${item.quantity >= (item.product.stock != null ? T(java.lang.Math).min(item.product.stock, 10) : 10) or item.ordered}"
+                                    th:disabled="${item.quantity >= (item.product.stock != null ? T(java.lang.Math).min(item.product.stock, 10) : 10) or !item.ordered}"
                                     th:data-item-id="${item.id}"
                                     onclick="updateQuantity(this, 1)">
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>
                         <button class="remove-btn" th:data-item-id="${item.id}"
-                                th:disabled="${item.ordered}">
+                                th:disabled="${!item.ordered}">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -662,8 +636,8 @@
                     }
                     quantitySpan.textContent = data.newQuantity;
                     totalSpan.textContent = data.totalPrice.toFixed(2) + ' ₽';
-                    minusBtn.disabled = data.newQuantity <= 1 || data.ordered;
-                    plusBtn.disabled = data.newQuantity >= maxAllowed || data.ordered;
+                    minusBtn.disabled = data.newQuantity <= 1 || !data.ordered;
+                    plusBtn.disabled = data.newQuantity >= maxAllowed || !data.ordered;
                     updateTotals();
                 } else {
                     alert(data.message);
@@ -699,9 +673,9 @@
                     checkbox.checked = data.ordered;
                     cartItem.style.backgroundColor = data.ordered ? 'transparent' : '#f8f9fa';
                     cartItem.style.opacity = data.ordered ? '1' : '0.7';
-                    minusBtn.disabled = data.ordered || parseInt(cartItem.querySelector('.quantity-value').textContent) <= 1;
-                    plusBtn.disabled = data.ordered || parseInt(cartItem.querySelector('.quantity-value').textContent) >= maxStock(cartItem);
-                    removeBtn.disabled = data.ordered;
+                    minusBtn.disabled = !data.ordered || parseInt(cartItem.querySelector('.quantity-value').textContent) <= 1;
+                    plusBtn.disabled = !data.ordered || parseInt(cartItem.querySelector('.quantity-value').textContent) >= maxStock(cartItem);
+                    removeBtn.disabled = !data.ordered;
                     updateTotals();
                 } else {
                     alert(data.message);

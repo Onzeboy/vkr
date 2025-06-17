@@ -1,15 +1,10 @@
 package com.nzby.homeshop.Services;
 
 import com.nzby.homeshop.DTO.CategoryForm;
-import com.nzby.homeshop.POJO.Category;
+import com.nzby.homeshop.POJO.*;
+import com.nzby.homeshop.POJO.User;
 import com.nzby.homeshop.POJO.Enum.ProductStatus;
-import com.nzby.homeshop.POJO.Product;
-import com.nzby.homeshop.POJO.ProductImage;
-import com.nzby.homeshop.POJO.Review;
-import com.nzby.homeshop.Repository.CategoryRepository;
-import com.nzby.homeshop.Repository.ProductImageRepository;
-import com.nzby.homeshop.Repository.ProductRepository;
-import com.nzby.homeshop.Repository.ReviewRepository;
+import com.nzby.homeshop.Repository.*;
 import com.nzby.homeshop.Utils.ProductImageComparator;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
@@ -19,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -51,6 +47,9 @@ public class ProductService {
 
     @Autowired
     private ReviewRepository reviewRepository;
+
+    @Autowired
+    private WishlistRepository wishlistRepository;
 
     @Autowired
     private ProductImageRepository productImageRepository;
@@ -270,18 +269,6 @@ public class ProductService {
     }
 
     @Transactional
-    public void setupCategories(Product product, List<Long> categoryIds) {
-        if (categoryIds != null && !categoryIds.isEmpty()) {
-            Set<Category> categories = new HashSet<>();
-            for (Long categoryId : categoryIds) {
-                Category category = findCategoryById(categoryId);
-                categories.add(category);
-            }
-            product.setCategories(categories);
-        }
-    }
-
-    @Transactional
     public void setupTags(Product product, String tags) {
         if (tags != null && !tags.isEmpty()) {
             Set<String> tagSet = Arrays.stream(tags.split(","))
@@ -467,5 +454,40 @@ public class ProductService {
                         Product::getId,
                         product -> product.getStock() != null ? product.getStock() : 0
                 ));
+    }
+
+    public List<Product> getWishlistProducts(User user) {
+        List<Wishlist> items = wishlistRepository.findByUser(user);
+        return items.stream().map(Wishlist::getProduct).collect(Collectors.toList());
+    }
+
+    public List<Product> get3WishlistProducts(User currentUser) {
+        List<Wishlist> items = wishlistRepository.findByUser(currentUser);
+        return items.stream()
+                .sorted(Comparator.comparing(Wishlist::getAddedAt, Comparator.reverseOrder())) // Сортировка по createdAt по убыванию
+                .limit(3) // Ограничение до 3 элементов
+                .map(Wishlist::getProduct)
+                .collect(Collectors.toList());
+    }
+
+    public Page<Product> getWishlistProductsPaginated(User user, int page, int size, String search, String category) {
+        List<Wishlist> items = wishlistRepository.findByUser(user);
+        List<Product> products = items.stream()
+                .map(Wishlist::getProduct)
+                .filter(product -> {
+                    boolean matchesSearch = search == null || search.isEmpty() ||
+                            product.getName().toLowerCase().contains(search.toLowerCase());
+                    boolean matchesCategory = category == null || category.isEmpty() ||
+                            String.valueOf(product.getCategory().getId()).equals(category);
+                    return matchesSearch && matchesCategory;
+                })
+                .sorted(Comparator.comparing(Product::getCreatedAt, Comparator.reverseOrder()))
+                .collect(Collectors.toList());
+
+        int start = Math.min(page * size, products.size());
+        int end = Math.min(start + size, products.size());
+        List<Product> pagedProducts = products.subList(start, end);
+
+        return new PageImpl<>(pagedProducts, PageRequest.of(page, size), products.size());
     }
 }

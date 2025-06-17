@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Управление заказами - Доставка</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #333333;
+      --secondary: #1a1a1a;
+      --accent: #666666;
+      --danger: #e63946;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --gray: #333333;
+      --light-gray: #e9ecef;
+    }
+    body { padding-top: 4.5rem; font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif; }
+    .status-pending { color: #f59e0b; font-weight: 600; }
+    .status-delivered { color: #10b981; font-weight: 600; }
+    .fade-in { animation: fadeIn 0.5s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .toast { position: fixed; bottom: 1rem; right: 1rem; z-index: 1000; transition: all 0.3s ease; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+    .modal.show { display: flex; justify-content: center; align-items: center; }
+    .modal-content { background: white; padding: 1.5rem; border-radius: 0.5rem; width: 100%; max-width: 400px; }
+    @media (max-width: 768px) { .table-container { overflow-x: auto; } .order-card { flex-direction: column; align-items: flex-start; } }
+    #no-couriers-message { display: none; color: #f59e0b; font-size: 0.875rem; margin-top: 0.5rem; }
+  </style>
+</head>
+<body class="bg-gray-100">
+<header class="fixed top-0 left-0 w-full bg-white shadow-md border border-gray-200 z-50">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center py-3">
+    <a href="/" class="flex items-center space-x-2 text-xl font-bold text-gray-800 hover:text-gray-600">
+      <i class="fas fa-store text-gray-500"></i>
+      <span>Доставка - Админ</span>
+    </a>
+    <div class="flex items-center space-x-4">
+      <a href="/" class="text-gray-600 hover:text-gray-800 font-medium flex items-center space-x-1">
+        <i class="fas fa-cog"></i>
+        <span>Админ панель</span>
+      </a>
+      <a href="/admin/orders" class="text-gray-600 hover:text-gray-800 font-medium">Заказы</a>
+      <a href="/logout" class="text-gray-600 hover:text-gray-800 font-medium flex items-center space-x-1">
+        <i class="fas fa-sign-out-alt"></i>
+        <span>Выйти</span>
+      </a>
+    </div>
+  </div>
+</header>
+<main class="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="bg-white rounded-xl shadow-lg p-6">
+    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Управление заказами</h2>
+
+    <!-- Сообщения об успехе или ошибке -->
+    <div th:if="${message}" th:classappend="${message.startsWith('Ошибка')} ? 'toast bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg' : 'toast bg-blue-800 text-white px-4 py-2 rounded-lg shadow-lg'">
+      <p th:text="${message}"></p>
+    </div>
+
+    <!-- Фильтр по статусу -->
+    <form id="orderFilterForm" th:action="@{/admin/orders}" method="get" class="flex flex-col sm:flex-row justify-between sm:items-center mb-6 space-y-4 sm:space-x-4">
+      <select name="status" id="statusFilter" onchange="submitForm()" class="w-full sm:w-1/4 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        <option value="">Все статусы</option>
+        <option th:each="status : ${statuses}" th:value="${status}" th:text="${status}" th:selected="${selectedStatus == status}"></option>
+      </select>
+    </form>
+
+    <!-- Таблица заказов -->
+    <div class="table-container">
+      <p class="mb-4 text-sm text-gray-600">Количество заказов: <span th:text="${orders.size()}"></span></p>
+      <table class="w-full border-collapse table-auto">
+        <thead>
+        <tr class="bg-gray-50">
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">ID</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Клиент</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Адрес доставки</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Сумма</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Статус</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Дата создания</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Курьер</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Действия</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="order : ${orders}" class="fade-in border-t border-gray-200 hover:bg-gray-50">
+          <td class="px-4 py-3 text-sm text-gray-800" th:text="${order.id}"></td>
+          <td class="px-4 py-3 text-sm text-gray-800" th:text="${order.user.name} + ' ' + ${order.user.surname} ?: 'N/A'"></td>
+          <td class="px-4 py-3 text-sm text-gray-800" th:text="${order.address.city} + ', ' + ${order.address.streetAddress} ?: 'N/A'"></td>
+          <td class="px-4 py-3 text-sm text-gray-800" th:text="${#numbers.formatDecimal(order.totalAmount, 0, 2, 'POINT')} + ' ₽'"></td>
+          <td class="px-4 py-3 text-sm">
+            <span th:class="${order.status == T(com.nzby.homeshop.POJO.Enum.OrderStatus).PENDING} ? 'status-pending' : 'status-delivered'"
+                  th:text="${order.status}"></span>
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-800" th:text="${#temporals.format(order.createdAt, 'dd.MM.yyyy HH:mm')} ?: 'N/A'"></td>
+          <td class="px-4 py-3 text-sm text-gray-800" th:text="${order.courier != null ? order.courier.user.name + ' ' + order.courier.user.surname : 'Не назначен'}"></td>
+          <td class="px-4 py-3 text-sm">
+            <div class="flex items-center space-x-2">
+              <button class="text-blue-600 hover:text-blue-800 edit-btn"
+                      th:attr="data-order-id=${order.id},data-order-status=${order.status}"
+                      onclick="openStatusModal(this)">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="text-green-600 hover:text-green-800 assign-btn"
+                      th:attr="data-order-id=${order.id},data-courier-id=${order.courier?.id}"
+                      onclick="openAssignModal(this)">
+                <i class="fas fa-user-plus"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+        <tr th:if="${orders.empty}">
+          <td colspan="8" class="text-center text-gray-500 py-8">Заказы не найдены.</td>
+        </tr>
+        </tbody>
+      </table>
+
+      <!-- Карточки для мобильных -->
+      <div class="sm:hidden flex flex-col space-y-4 mt-4">
+        <div th:each="order : ${orders}" class="fade-in order-card bg-gray-50 p-4 rounded-lg border border-gray-200">
+          <div class="flex justify-between items-center">
+            <span class="font-semibold text-gray-800 text-sm" th:text="'ID: ' + ${order.id}"></span>
+            <div class="flex items-center">
+              <button class="text-blue-600 hover:text-blue-800 edit-btn"
+                      th:attr="data-order-id=${order.id},data-order-status=${order.status}"
+                      onclick="openStatusModal(this)">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="text-green-600 hover:text-green-800 assign-btn"
+                      th:attr="data-order-id=${order.id},data-courier-id=${order.courier?.id}"
+                      onclick="openAssignModal(this)">
+                <i class="fas fa-user-plus"></i>
+              </button>
+            </div>
+          </div>
+          <div class="text-sm text-gray-600" th:text="'Клиент: ' + (${order.user.name} + ' ' + ${order.user.surname} ?: 'N/A')"></div>
+          <div class="text-sm text-gray-600" th:text="'Адрес: ' + (${order.address.streetAddress} + ', ' + ${order.address.city} ?: 'N/A')"></div>
+          <div class="text-sm text-gray-600" th:text="'Сумма: ' + ${#numbers.formatDecimal(order.totalAmount, 0, 2, 'POINT')} + ' ₽'"></div>
+          <div class="text-sm">
+            <span th:class="${order.status == T(com.nzby.homeshop.POJO.Enum.OrderStatus).PENDING} ? 'status-pending' : 'status-delivered'"
+                  th:text="'Статус: ' + ${order.status}"></span>
+          </div>
+          <div class="text-sm text-gray-600" th:text="'Создан: ' + ${#temporals.format(order.createdAt, 'dd.MM.yyyy HH:mm')} ?: 'N/A'"></div>
+          <div class="text-sm text-gray-600" th:text="${order.courier != null ? 'Курьер: ' + order.courier.user.name + ' ' + order.courier.user.surname : 'Курьер: Не назначен'}"></div>
+        </div>
+        <div th:if="${orders.empty}" class="text-center text-gray-500 py-8">Заказы не найдены.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно для изменения статуса -->
+  <div id="statusModal" class="modal">
+    <div class="modal-content">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold text-gray-800">Изменить статус заказа</h3>
+        <button onclick="closeModal('statusModal')" class="text-gray-600 hover:text-gray-800">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <form id="statusForm" th:action="@{/admin/orders/update-status}" method="post">
+        <input type="hidden" id="orderId" name="orderId">
+        <div class="mb-4">
+          <label for="status" class="block text-sm font-medium text-gray-700">Новый статус</label>
+          <select id="status" name="status" class="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <option th:each="status : ${statuses}" th:value="${status}" th:text="${status}"></option>
+          </select>
+        </div>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="closeModal('statusModal')" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400">Отмена</button>
+          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Модальное окно для назначения курьера -->
+  <div id="assignModal" class="modal">
+    <div class="modal-content">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold text-gray-800">Назначить курьера</h3>
+        <button onclick="closeModal('assignModal')" class="text-gray-600 hover:text-gray-800">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <form id="assignForm" th:action="@{/admin/assign-courier}" method="post">
+        <input type="hidden" id="assignOrderId" name="orderId">
+        <div class="mb-4">
+          <label for="courier" class="block text-sm font-medium text-gray-700">Выберите курьера</label>
+          <select id="courier" name="courierId" class="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <option value="">Не назначен</option>
+          </select>
+          <div id="no-couriers-message">Курьеры не в сети</div>
+        </div>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="closeModal('assignModal')" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400">Отмена</button>
+          <button type="submit" id="assignButton" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700" disabled>Назначить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</main>
+<script>
+  // Отправка формы фильтра
+  function submitForm() {
+    document.getElementById('orderFilterForm').submit();
+  }
+
+  // Дебouncing
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  const debouncedSubmit = debounce(submitForm, 300);
+
+  // Управление модальными окнами
+  function openStatusModal(button) {
+    const modal = document.getElementById('statusModal');
+    const orderId = button.getAttribute('data-order-id');
+    const status = button.getAttribute('data-order-status');
+    document.getElementById('orderId').value = orderId;
+    document.getElementById('status').value = status;
+    modal.classList.add('show');
+  }
+
+  function updateAssignButtonState() {
+    const courierSelect = document.getElementById('courier');
+    const assignButton = document.getElementById('assignButton');
+    const noCouriersMessage = document.getElementById('no-couriers-message');
+    const hasCouriers = courierSelect.options.length > 1; // Более одной опции (кроме "Не назначен")
+
+    assignButton.disabled = !hasCouriers || courierSelect.value === '';
+    noCouriersMessage.style.display = hasCouriers ? 'none' : 'block';
+  }
+
+  function openAssignModal(button) {
+    const modal = document.getElementById('assignModal');
+    const orderId = button.getAttribute('data-order-id');
+    const courierId = button.getAttribute('data-courier-id');
+    document.getElementById('assignOrderId').value = orderId;
+
+    // Очистка списка курьеров
+    const courierSelect = document.getElementById('courier');
+    courierSelect.innerHTML = '<option value="">Не назначен</option>';
+
+    // AJAX-запрос для получения онлайн-курьеров
+    fetch('/admin/api/online-couriers', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      data.forEach(courier => {
+        const option = document.createElement('option');
+        option.value = courier.id;
+        option.textContent = `${courier.userName} ${courier.userSurname}`;
+        if (courier.id == courierId) {
+          option.selected = true;
+        }
+        courierSelect.appendChild(option);
+      });
+      updateAssignButtonState();
+    })
+    .catch(error => {
+      console.error('Ошибка загрузки курьеров:', error);
+      updateAssignButtonState();
+    });
+
+    // Обработчик изменения выбора курьера
+    courierSelect.addEventListener('change', updateAssignButtonState);
+
+    modal.classList.add('show');
+  }
+
+  function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    modal.classList.remove('show');
+    // Удаляем обработчик при закрытии модального окна
+    const courierSelect = document.getElementById('courier');
+    courierSelect.removeEventListener('change', updateAssignButtonState);
+  }
+</script>
+</body>
+</html>

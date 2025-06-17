@@ -39,8 +39,7 @@ public class CartController {
             return "redirect:/auth/login";
         }
 
-        User user = userService.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new IllegalStateException("Пользователь не найден"));
+        User user = userService.findByEmail(userDetails.getUsername());
 
         List<CartItem> cartItems = cartService.getCartItems(user);
         cartItems.sort(Comparator.comparing(CartItem::getId));
@@ -72,8 +71,8 @@ public class CartController {
             @AuthenticationPrincipal UserDetails userDetails) {
         Map<String, Object> response = new HashMap<>();
         try {
-            User user = userService.findByEmail(userDetails.getUsername())
-                    .orElseThrow(() -> new IllegalStateException("Пользователь не найден"));
+            User user = userService.findByEmail(userDetails.getUsername());
+
             CartItem cartItem = cartService.getCartItemById(id);
 
             if (cartItem == null || !cartItem.getUser().getId().equals(user.getId())) {
@@ -125,8 +124,8 @@ public class CartController {
             @AuthenticationPrincipal UserDetails userDetails) {
         Map<String, Object> response = new HashMap<>();
         try {
-            User user = userService.findByEmail(userDetails.getUsername())
-                    .orElseThrow(() -> new IllegalStateException("Пользователь не найден"));
+            User user = userService.findByEmail(userDetails.getUsername());
+
             CartItem cartItem = cartService.getCartItemById(id);
 
             if (cartItem == null || !cartItem.getUser().getId().equals(user.getId())) {
@@ -158,9 +157,7 @@ public class CartController {
                            @RequestParam("shippingMethod") String shippingMethod,
                            @RequestParam("paymentMethod") String paymentMethod,
                            RedirectAttributes redirectAttributes) {
-        User user = userService.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new IllegalStateException("Пользователь не найден"));
-
+        User user = userService.findByEmail(userDetails.getUsername());
         try {
             List<Long> selectedItemIds = Arrays.stream(selectedItems.split(","))
                     .filter(s -> !s.isEmpty())
@@ -188,8 +185,8 @@ public class CartController {
             @AuthenticationPrincipal UserDetails userDetails) {
         Map<String, Object> response = new HashMap<>();
         try {
-            User user = userService.findByEmail(userDetails.getUsername())
-                    .orElseThrow(() -> new IllegalStateException("Пользователь не найден"));
+            User user = userService.findByEmail(userDetails.getUsername());
+
             CartItem cartItem = cartService.getCartItemById(id);
 
             if (cartItem == null || !cartItem.getUser().getId().equals(user.getId())) {

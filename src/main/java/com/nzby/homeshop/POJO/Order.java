@@ -1,5 +1,6 @@
 package com.nzby.homeshop.POJO;
 
+import com.nzby.homeshop.POJO.Enum.OrderStatus;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -8,7 +9,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "orders")
+@Table(name = "orders", indexes = {
+        @Index(name = "idx_orders_user_id", columnList = "user_id"),
+        @Index(name = "idx_orders_status", columnList = "status"),
+        @Index(name = "idx_orders_courier_id", columnList = "courier_id"),
+        @Index(name = "idx_orders_created_at", columnList = "created_at")
+})
 @Data
 public class Order {
     @Id
@@ -22,8 +28,9 @@ public class Order {
     @Column(name = "order_date", nullable = false)
     private LocalDateTime orderDate;
 
-    @Column(nullable = false)
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private OrderStatus status;
 
     @Column(name = "total_amount", nullable = false)
     private BigDecimal totalAmount;
@@ -42,6 +49,10 @@ public class Order {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @ManyToOne
+    @JoinColumn(name = "courier_id")
+    private Courier courier;
 
     @ManyToOne
     @JoinColumn(name = "address_id", nullable = false)
@@ -102,11 +113,11 @@ public class Order {
         this.orderDate = orderDate;
     }
 
-    public String getStatus() {
+    public OrderStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(OrderStatus status) {
         this.status = status;
     }
 
@@ -172,5 +183,13 @@ public class Order {
 
     public void setOrderItems(List<OrderItem> orderItems) {
         this.orderItems = orderItems;
+    }
+
+    public Courier getCourier() {
+        return courier;
+    }
+
+    public void setCourier(Courier courier) {
+        this.courier = courier;
     }
 }
